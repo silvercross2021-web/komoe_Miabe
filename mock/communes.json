@@ -1,0 +1,134 @@
+[
+  {
+    "id": "COM-001",
+    "nom": "Cocody",
+    "region": "Lagunes",
+    "district": "Abidjan",
+    "budgetAlloue": 15000000000,
+    "budgetDepense": 4500000000,
+    "scoreTransparence": 78,
+    "coordonnees": { "lat": 5.3599, "lng": -3.9883 },
+    "walletAddress": "0x3f8a4b2c1d9e7f6a5b4c3d2e1f0a9b8c7d6e5f4e"
+  },
+  {
+    "id": "COM-002",
+    "nom": "Yopougon",
+    "region": "Lagunes",
+    "district": "Abidjan",
+    "budgetAlloue": 20000000000,
+    "budgetDepense": 12000000000,
+    "scoreTransparence": 65,
+    "coordonnees": { "lat": 5.3364, "lng": -4.0536 },
+    "walletAddress": "0x9a2b1c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b"
+  },
+  {
+    "id": "COM-003",
+    "nom": "Marcory",
+    "region": "Lagunes",
+    "district": "Abidjan",
+    "budgetAlloue": 8000000000,
+    "budgetDepense": 3200000000,
+    "scoreTransparence": 55,
+    "coordonnees": { "lat": 5.3008, "lng": -4.0000 },
+    "walletAddress": "0x4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f"
+  },
+  {
+    "id": "COM-004",
+    "nom": "Koumassi",
+    "region": "Lagunes",
+    "district": "Abidjan",
+    "budgetAlloue": 7500000000,
+    "budgetDepense": 2800000000,
+    "scoreTransparence": 62,
+    "coordonnees": { "lat": 5.2924, "lng": -3.9708 },
+    "walletAddress": "0x1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b"
+  },
+  {
+    "id": "COM-005",
+    "nom": "Songon",
+    "region": "Lagunes",
+    "district": "Abidjan",
+    "budgetAlloue": 4000000000,
+    "budgetDepense": 1200000000,
+    "scoreTransparence": 42,
+    "coordonnees": { "lat": 5.3764, "lng": -4.2000 },
+    "walletAddress": "0x5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c"
+  },
+  {
+    "id": "COM-006",
+    "nom": "Bingerville",
+    "region": "Lagunes",
+    "district": "Abidjan",
+    "budgetAlloue": 3500000000,
+    "budgetDepense": 900000000,
+    "scoreTransparence": 70,
+    "coordonnees": { "lat": 5.3597, "lng": -3.8914 },
+    "walletAddress": "0x6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
+  },
+  {
+    "id": "COM-007",
+    "nom": "Plateau",
+    "region": "Lagunes",
+    "district": "Abidjan",
+    "budgetAlloue": 12000000000,
+    "budgetDepense": 7500000000,
+    "scoreTransparence": 85,
+    "coordonnees": { "lat": 5.3233, "lng": -4.0228 },
+    "walletAddress": "0x7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e"
+  },
+  {
+    "id": "COM-008",
+    "nom": "Port-Bouët",
+    "region": "Lagunes",
+    "district": "Abidjan",
+    "budgetAlloue": 6000000000,
+    "budgetDepense": 2100000000,
+    "scoreTransparence": 48,
+    "coordonnees": { "lat": 5.2544, "lng": -3.9306 },
+    "walletAddress": "0x8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f"
+  },
+  {
+    "id": "COM-009",
+    "nom": "Bouaké",
+    "region": "Gbêkê",
+    "district": "Vallée du Bandama",
+    "budgetAlloue": 10000000000,
+    "budgetDepense": 4800000000,
+    "scoreTransparence": 53,
+    "coordonnees": { "lat": 7.6939, "lng": -5.0307 },
+    "walletAddress": "0x9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a"
+  },
+  {
+    "id": "COM-010",
+    "nom": "San-Pédro",
+    "region": "San-Pédro",
+    "district": "Bas-Sassandra",
+    "budgetAlloue": 8500000000,
+    "budgetDepense": 3700000000,
+    "scoreTransparence": 60,
+    "coordonnees": { "lat": 4.7485, "lng": -6.6363 },
+    "walletAddress": "0xa0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9"
+  },
+  {
+    "id": "COM-011",
+    "nom": "Daloa",
+    "region": "Haut-Sassandra",
+    "district": "Haut-Sassandra",
+    "budgetAlloue": 6500000000,
+    "budgetDepense": 2900000000,
+    "scoreTransparence": 45,
+    "coordonnees": { "lat": 6.8772, "lng": -6.4502 },
+    "walletAddress": "0xb1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0"
+  },
+  {
+    "id": "COM-012",
+    "nom": "Yamoussoukro",
+    "region": "Lacs",
+    "district": "Lacs",
+    "budgetAlloue": 18000000000,
+    "budgetDepense": 9500000000,
+    "scoreTransparence": 80,
+    "coordonnees": { "lat": 6.8276, "lng": -5.2893 },
+    "walletAddress": "0xc2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1"
+  }
+]

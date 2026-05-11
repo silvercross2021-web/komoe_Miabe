@@ -1,0 +1,30 @@
+[
+  {
+    "id": "BAIL-001",
+    "nom": "Banque Mondiale",
+    "type": "Multilatéral",
+    "fondsAlloues": 50000000000,
+    "communesSoutenues": ["COM-001", "COM-003", "COM-009"]
+  },
+  {
+    "id": "BAIL-002",
+    "nom": "Agence Française de Développement (AFD)",
+    "type": "Bilatéral",
+    "fondsAlloues": 25000000000,
+    "communesSoutenues": ["COM-002", "COM-006"]
+  },
+  {
+    "id": "BAIL-003",
+    "nom": "Banque Africaine de Développement (BAD)",
+    "type": "Régional",
+    "fondsAlloues": 35000000000,
+    "communesSoutenues": ["COM-004", "COM-009", "COM-010", "COM-012"]
+  },
+  {
+    "id": "BAIL-004",
+    "nom": "Union Européenne — Délégation CI",
+    "type": "Multilatéral",
+    "fondsAlloues": 18000000000,
+    "communesSoutenues": ["COM-001", "COM-007", "COM-011"]
+  }
+]

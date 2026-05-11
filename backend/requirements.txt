@@ -1,0 +1,26 @@
+# ─── Django core ──────────────────────────────────────────────────────────────
+Django==5.1.4
+djangorestframework==3.15.2
+djangorestframework-simplejwt==5.3.1
+django-cors-headers==4.6.0
+python-dotenv==1.0.1
+
+# ─── Base de données ──────────────────────────────────────────────────────────
+# SQLite est utilisé par défaut en local (aucune installation requise)
+# PostgreSQL (requis)
+psycopg2-binary==2.9.12
+
+# ─── Blockchain ───────────────────────────────────────────────────────────────
+web3==7.6.0
+
+# ─── Stockage IPFS ────────────────────────────────────────────────────────────
+requests==2.32.3
+
+# ─── Tests ────────────────────────────────────────────────────────────────────
+pytest==8.3.4
+pytest-django==4.9.0
+factory-boy==3.3.1
+gunicorn==23.0.0
+xhtml2pdf==0.2.16
+qrcode[pil]==8.0
+

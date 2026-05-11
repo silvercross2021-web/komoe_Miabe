@@ -1,0 +1,18 @@
+[
+  {
+    "id": "INST-001",
+    "nom": "DGDDL — Direction Générale de la Décentralisation et du Développement Local",
+    "type": "Ministère",
+    "auditsRealises": 201,
+    "communesSupervisees": 201,
+    "alertesActives": 47
+  },
+  {
+    "id": "INST-002",
+    "nom": "Cour des Comptes de Côte d'Ivoire",
+    "type": "Juridiction",
+    "auditsRealises": 85,
+    "communesSupervisees": 201,
+    "alertesActives": 12
+  }
+]

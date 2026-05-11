@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python manage.py makemigrations users)",
+      "Bash(python manage.py migrate users)",
+      "Bash(python manage.py shell)",
+      "Bash(python manage.py shell_plus --quiet)"
+    ]
+  }
+}
