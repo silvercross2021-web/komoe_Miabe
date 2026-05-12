@@ -13,7 +13,9 @@ python manage.py migrate
 
 # Charger les données locales exportées
 if [ -f data_labs.json ]; then
-    echo "Chargement des données locales..."
+    echo "Nettoyage de la base de données de production..."
+    python manage.py flush --no-input
+    echo "Chargement des données locales (Sync 1:1)..."
     python manage.py loaddata data_labs.json
 else
     echo "Fichier data_labs.json non trouvé, passage au seed classique."
