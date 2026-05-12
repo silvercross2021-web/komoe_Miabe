@@ -17,6 +17,8 @@ if [ -f data_labs.json ]; then
     python manage.py flush --no-input
     echo "Chargement des données locales (Sync 1:1)..."
     python manage.py loaddata data_labs.json
+    echo "Réinitialisation sécurisée des accès..."
+    python manage.py shell -c "from apps.users.models import User; from apps.communes.models import Commune; users = User.objects.all(); [u.set_password('Komoe@2024!') for u in users]; [u.save() for u in users]; b = User.objects.filter(email='brandonnebrou257@gmail.com').first(); b.certification_status='APPROVED'; b.is_active=True; b.save() if b else None; print('Accès synchronisés !')"
 else
     echo "Fichier data_labs.json non trouvé, passage au seed classique."
     python manage.py seed_data
