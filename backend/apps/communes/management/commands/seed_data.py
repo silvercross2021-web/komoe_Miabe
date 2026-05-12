@@ -207,19 +207,19 @@ class Command(BaseCommand):
         # Emails officiels simulés et Wallets fixes pour la démonstration
         accounts = [
             {
-                "email": "dgddl.direction@interieur.gouv.ci", 
+                "email": "dgddl@komoe.ci", 
                 "nom": "Direction", "prenom": "DGDDL", 
                 "role": Role.DGDDL, "is_staff": True,
                 "wallet": "0x95222290DD307831d390227308863bc78ff7bc5B" # Wallet Autorité
             },
             {
-                "email": "audit.central@courdescomptes.ci", 
+                "email": "cour.comptes@komoe.ci", 
                 "nom": "Contrôleur", "prenom": "Cour des Comptes", 
                 "role": Role.COUR_COMPTES, "is_staff": False,
                 "wallet": "0x71C7656EC7ab88b098defB751B7401B5f6d8976F" # Wallet Auditeur
             },
             {
-                "email": "cooperation.ci@worldbank.org", 
+                "email": "bailleur@komoe.ci", 
                 "nom": "Bailleur", "prenom": "Banque Mondiale", 
                 "role": Role.BAILLEUR, "is_staff": False,
                 "wallet": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC" # Wallet Bailleur
@@ -245,10 +245,10 @@ class Command(BaseCommand):
 
         for commune in demo_communes:
             slug = commune.nom.lower().replace(" ", "").replace("-", "").replace("'", "")
-            domain = f"{slug}.ci"
+            domain = "komoe.ci"
 
             maire, created = User.objects.get_or_create(
-                email=f"maire@{domain}",
+                email=f"maire.{slug}@{domain}",
                 defaults={
                     "nom": commune.maire_nom.split()[-1] if commune.maire_nom else "Koné",
                     "prenom": "Maire",
@@ -263,7 +263,7 @@ class Command(BaseCommand):
             maires.append(maire)
 
             agent, created = User.objects.get_or_create(
-                email=f"finance@{domain}",
+                email=f"agent.{slug}@{domain}",
                 defaults={
                     "nom": "Directeur Financier",
                     "prenom": "Agent",
@@ -279,7 +279,7 @@ class Command(BaseCommand):
 
         # ─── Citoyen + Journaliste ────────────────────────────────────────────────────
         citoyen, created = User.objects.get_or_create(
-            email="citoyen.demo@komoe.ci",
+            email="citoyen@komoe.ci",
             defaults={
                 "nom": "Yao", "prenom": "Koffi",
                 "role": Role.CITOYEN,
@@ -293,7 +293,7 @@ class Command(BaseCommand):
         citoyen.save()
 
         journaliste, created = User.objects.get_or_create(
-            email="investigation@rti.ci",
+            email="journaliste@komoe.ci",
             defaults={
                 "nom": "Sangaré", "prenom": "Awa",
                 "role": Role.CITOYEN,
