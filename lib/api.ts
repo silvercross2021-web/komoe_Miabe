@@ -316,7 +316,7 @@ export const communesApi = {
     if (filters?.limit) params.set("limit", String(filters.limit));
     if (filters?.offset) params.set("offset", String(filters.offset));
     const qs = params.toString();
-    return apiFetch<{ results: Commune[]; count: number }>(
+    return apiFetch<Commune[]>(
       `/api/communes/${qs ? `?${qs}` : ""}`
     );
   },

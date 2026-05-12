@@ -1,0 +1,17 @@
+[
+  {"key":"DEBUG","value":"False"},
+  {"key":"PINATA_GATEWAY","value":"https://gateway.pinata.cloud/ipfs"},
+  {"key":"DJANGO_ALLOWED_HOSTS","value":"komoe-miabe.onrender.com,komoe-miabe-4647.vercel.app"},
+  {"key":"JWT_ACCESS_TOKEN_LIFETIME_MINUTES","value":"60"},
+  {"key":"JWT_REFRESH_TOKEN_LIFETIME_DAYS","value":"7"},
+  {"key":"POLYGON_AMOY_RPC_URL","value":"https://polygon-amoy.g.alchemy.com/v2/d3XA6IZwwIHPLiHaQyG-s"},
+  {"key":"DEPLOYER_PRIVATE_KEY","value":"86508023723023e18a052bc50e705962034d885236ee532ef57108f4cb0f5001"},
+  {"key":"PINATA_JWT","value":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySW5mb3JtYXRpb24iOnsiaWQiOiI2YWZjOTQwZC05M2I2LTQzMTgtOGQwZS01YmQzMDAwNWUxYjIiLCJlbWFpbCI6InRlYW1hbmltZTIyNUBnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwicGluX3BvbGljeSI6eyJyZWdpb25zIjpbeyJkZXNpcmVkUmVwbGljYXRpb25Db3VudCI6MSwiaWQiOiJGUkExIn0seyJkZXNpcmVkUmVwbGljYXRpb25Db3VudCI6MSwiaWQiOiJOWUMxIn1dLCJ2ZXJzaW9uIjoxfSwibWZhX2VuYWJsZWQiOmZhbHNlLCJzdGF0dXMiOiJBQ1RJVkUifSwiYXV0aGVudGljYXRpb25UeXBlIjoic2NvcGVkS2V5Iiwic2NvcGVkS2V5S2V5IjoiZjZhY2QzMzRhNjc3MWY1NjQzZjAiLCJzY29wZWRLZXlTZWNyZXQiOiJiZmNiNzJmZjYyMzk1ZWNiZjM2NzFkM2IwNzU3YzU0MDlmMjVjNzUxZTA2NDA5MTNlM2NiOTFmYmM3ZDEwZjU3IiwiZXhwIjoxODA5NzA4MDE4fQ.w_4XMdS_veEZBAhQUwXGU-_5q9h8juq3qQrSdIFNkcg"},
+  {"key":"DJANGO_SECRET_KEY","value":"komoe-prod-secret-key-2026"},
+  {"key":"DJANGO_DEBUG","value":"False"},
+  {"key":"SECRET_KEY","value":"komoe-secret-key-change-in-production-2024"},
+  {"key":"ALLOWED_HOSTS","value":"komoe-miabe.onrender.com,komoe-miabe-4647.vercel.app"},
+  {"key":"DATABASE_URL","value":"postgresql://komoe_admin:w84e44Tc2rftSdHLJbkzLzWRyYK6j9hm@dpg-d81kqq9j2pic73fprc4g-a/komoe"},
+  {"key":"CORS_ALLOWED_ORIGINS","value":"https://komoe-miabe.vercel.app,https://komoe-miabe-4647.vercel.app"},
+  {"key":"CONTRACT_ADDRESS","value":"0xE6e75274ce64C8396b5Fb44a2Dd6f7aE71E748ad"}
+]

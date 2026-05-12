@@ -235,9 +235,8 @@ class Command(BaseCommand):
                 "is_active": True,
                 "wallet_address": acc["wallet"]
             })
-            if created:
-                user.set_password("Komoe@2024!")
-                user.save()
+            user.set_password("Komoe@2024!")
+            user.save()
 
         # ─── Comptes Maire + Agent pour les 3 premières communes ──────────────────────
         self.stdout.write("Création Maire + Agent pour Abobo, Adjamé et Cocody...")
@@ -259,9 +258,8 @@ class Command(BaseCommand):
                     "wallet_address": "0x" + "".join(random.choices("abcdef0123456789", k=40))
                 },
             )
-            if created:
-                maire.set_password("Komoe@2024!")
-                maire.save()
+            maire.set_password("Komoe@2024!")
+            maire.save()
             maires.append(maire)
 
             agent, created = User.objects.get_or_create(
@@ -275,9 +273,8 @@ class Command(BaseCommand):
                     "wallet_address": "0x" + "".join(random.choices("abcdef0123456789", k=40))
                 },
             )
-            if created:
-                agent.set_password("Komoe@2024!")
-                agent.save()
+            agent.set_password("Komoe@2024!")
+            agent.save()
             agents.append(agent)
 
         # ─── Citoyen + Journaliste ────────────────────────────────────────────────────
@@ -291,8 +288,9 @@ class Command(BaseCommand):
             },
         )
         if created:
-            citoyen.set_password("Komoe@2024!")
-            citoyen.save()
+            pass
+        citoyen.set_password("Komoe@2024!")
+        citoyen.save()
 
         journaliste, created = User.objects.get_or_create(
             email="investigation@rti.ci",
@@ -306,8 +304,9 @@ class Command(BaseCommand):
             },
         )
         if created:
-            journaliste.set_password("Komoe@2024!")
-            journaliste.save()
+            pass
+        journaliste.set_password("Komoe@2024!")
+        journaliste.save()
 
         # ─── Transactions d'Infrastructure RÉELLES ────────────────────────────────────
         self.stdout.write("Création de projets d'infrastructure réels...")

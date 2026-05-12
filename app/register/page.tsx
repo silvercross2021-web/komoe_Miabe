@@ -35,21 +35,17 @@ export default function RegisterPage() {
   const [isCommuneDropdownOpen, setIsCommuneDropdownOpen] = useState(false);
 
   useEffect(() => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-    fetch(`${apiUrl}/api/communes/?limit=300`)
-      .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
-      .then(d => {
-        if (Array.isArray(d)) {
-          setCommunes(d);
-        } else {
-          setCommunes(d.results ?? []);
-        }
-      })
-      .catch((err) => {
-        setError(`Impossible de charger les communes: ${err.message}`);
-        setCommunes([]);
-      })
-      .finally(() => setCommunesLoading(false));
+    import("@/lib/api").then(({ communesApi }) => {
+      communesApi.list({ limit: 300 })
+        .then(d => {
+          setCommunes(d || []);
+        })
+        .catch((err) => {
+          setError(`Impossible de charger les communes: ${err.message}`);
+          setCommunes([]);
+        })
+        .finally(() => setCommunesLoading(false));
+    });
   }, []);
 
   const [professions, setProfessions] = useState<Profession[]>([]);
