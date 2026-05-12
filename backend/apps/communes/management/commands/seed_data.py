@@ -308,7 +308,31 @@ class Command(BaseCommand):
         journaliste.set_password("Komoe@2024!")
         journaliste.save()
 
-        # ─── Transactions d'Infrastructure RÉELLES ────────────────────────────────────
+        # ─── Utilisateurs Supplémentaires (Sync Local DB) ───────────────────────────────
+        extra_users = [
+            {"email": "brandonnebrou257@gmail.com", "nom": "N'Ebrou", "prenom": "Brandon", "role": Role.CITOYEN},
+            {"email": "silvercrooss@gmail.com", "nom": "Cross", "prenom": "Silver", "role": Role.CITOYEN},
+            {"email": "MARCAUREL@gmail.com", "nom": "Aurel", "prenom": "Marc", "role": Role.CITOYEN},
+            {"email": "citizen_chercheur@test.ci", "nom": "Chercheur", "prenom": "Demo", "role": Role.CITOYEN},
+            {"email": "citizen_ong@test.ci", "nom": "ONG", "prenom": "Demo", "role": Role.CITOYEN},
+            {"email": "citizen_journaliste@test.ci", "nom": "Journaliste", "prenom": "Demo", "role": Role.CITOYEN},
+            {"email": "citizen_citoyen@test.ci", "nom": "Citoyen", "prenom": "Demo", "role": Role.CITOYEN},
+            {"email": "citizen_bailleur@test.ci", "nom": "Bailleur", "prenom": "Demo", "role": Role.CITOYEN},
+            {"email": "test_engagement@komoe.ci", "nom": "Engagement", "prenom": "Test", "role": Role.CITOYEN},
+        ]
+
+        for u_data in extra_users:
+            u, created = User.objects.get_or_create(
+                email=u_data["email"],
+                defaults={
+                    "nom": u_data["nom"],
+                    "prenom": u_data["prenom"],
+                    "role": u_data["role"],
+                    "is_active": True
+                }
+            )
+            u.set_password("Komoe@2024!")
+            u.save()
         self.stdout.write("Création de projets d'infrastructure réels...")
         tx_crees = 0
         
@@ -363,11 +387,12 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS("  🚀 SEED KOMOE - ENVIRONNEMENT RÉEL CONFIGURÉ"))
         self.stdout.write(self.style.SUCCESS("=" * 60))
         self.stdout.write(f"  Emails clés :")
-        self.stdout.write("  - Admin DGDDL       : dgddl.direction@interieur.gouv.ci")
-        self.stdout.write("  - Cour des Comptes  : audit.central@courdescomptes.ci")
-        self.stdout.write("  - Banque Mondiale   : cooperation.ci@worldbank.org")
-        self.stdout.write("  - Journaliste RTI   : investigation@rti.ci")
-        self.stdout.write("  - Maire Abobo       : maire@abobo.ci")
+        self.stdout.write("  - Admin DGDDL       : dgddl@komoe.ci")
+        self.stdout.write("  - Cour des Comptes  : cour.comptes@komoe.ci")
+        self.stdout.write("  - Banque Mondiale   : bailleur@komoe.ci")
+        self.stdout.write("  - Journaliste       : journaliste@komoe.ci")
+        self.stdout.write("  - Maire Abobo       : maire.abobo@komoe.ci")
+        self.stdout.write("  - Utilisateur Local : silvercrooss@gmail.com")
         self.stdout.write(self.style.SUCCESS("=" * 60))
         self.stdout.write("  Mot de passe commun : Komoe@2024!")
         self.stdout.write(self.style.SUCCESS("=" * 60))
