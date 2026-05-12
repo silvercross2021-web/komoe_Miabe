@@ -244,7 +244,10 @@ class Command(BaseCommand):
         maires, agents = [], []
 
         for commune in demo_communes:
-            slug = commune.nom.lower().replace(" ", "").replace("-", "").replace("'", "")
+            # Slug ASCII-uniquement pour éviter les soucis d'encodage dans les emails
+            import unicodedata
+            slug = unicodedata.normalize('NFKD', commune.nom).encode('ascii', 'ignore').decode('ascii').lower()
+            slug = slug.replace(" ", "").replace("-", "").replace("'", "")
             domain = "komoe.ci"
 
             maire, created = User.objects.get_or_create(
@@ -310,15 +313,15 @@ class Command(BaseCommand):
 
         # ─── Utilisateurs Supplémentaires (Sync Local DB) ───────────────────────────────
         extra_users = [
-            {"email": "brandonnebrou257@gmail.com", "nom": "N'Ebrou", "prenom": "Brandon", "role": Role.CITOYEN},
-            {"email": "silvercrooss@gmail.com", "nom": "Cross", "prenom": "Silver", "role": Role.CITOYEN},
-            {"email": "MARCAUREL@gmail.com", "nom": "Aurel", "prenom": "Marc", "role": Role.CITOYEN},
-            {"email": "citizen_chercheur@test.ci", "nom": "Chercheur", "prenom": "Demo", "role": Role.CITOYEN},
-            {"email": "citizen_ong@test.ci", "nom": "ONG", "prenom": "Demo", "role": Role.CITOYEN},
-            {"email": "citizen_journaliste@test.ci", "nom": "Journaliste", "prenom": "Demo", "role": Role.CITOYEN},
-            {"email": "citizen_citoyen@test.ci", "nom": "Citoyen", "prenom": "Demo", "role": Role.CITOYEN},
-            {"email": "citizen_bailleur@test.ci", "nom": "Bailleur", "prenom": "Demo", "role": Role.CITOYEN},
-            {"email": "test_engagement@komoe.ci", "nom": "Engagement", "prenom": "Test", "role": Role.CITOYEN},
+            {"email": "brandonnebrou257@gmail.com", "nom": "Kablan Christ Brandonne Davy", "prenom": "Brou", "role": Role.CITOYEN},
+            {"email": "silvercrooss@gmail.com", "nom": "COULIBALY", "prenom": "IB", "role": Role.CITOYEN},
+            {"email": "MARCAUREL@gmail.com", "nom": "AUREL", "prenom": "MARC", "role": Role.CITOYEN},
+            {"email": "citizen_chercheur@test.ci", "nom": "Chercheur", "prenom": "Paul", "role": Role.CITOYEN},
+            {"email": "citizen_ong@test.ci", "nom": "ONG", "prenom": "Marie", "role": Role.CITOYEN},
+            {"email": "citizen_journaliste@test.ci", "nom": "Journaliste", "prenom": "Jean", "role": Role.CITOYEN},
+            {"email": "citizen_citoyen@test.ci", "nom": "Citoyen", "prenom": "Thomas", "role": Role.CITOYEN},
+            {"email": "citizen_bailleur@test.ci", "nom": "Bailleur", "prenom": "Sophie", "role": Role.CITOYEN},
+            {"email": "test_engagement@komoe.ci", "nom": "Test", "prenom": "Engagement", "role": Role.CITOYEN},
         ]
 
         for u_data in extra_users:
