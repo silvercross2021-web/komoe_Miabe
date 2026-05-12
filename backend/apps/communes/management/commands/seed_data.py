@@ -1,4 +1,4 @@
-﻿"""
+"""
 Commande de seed : charge les donnÃ©es initiales KOMOE dans PostgreSQL.
 - 201 communes de CÃ´te d'Ivoire
 - 1 compte DGDDL admin, Cour des Comptes, Bailleur
@@ -201,39 +201,62 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(
             f"   OK {communes_crees} communes crÃ©Ã©es ({len(communes_list)} total)"))
 
-        # â”€â”€ Comptes institutionnels â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-        self.stdout.write("CrÃ©ation des comptes institutionnels...")
+        # ─── Comptes institutionnels ────────────────────────────────────────────────────
+        self.stdout.write("Création des comptes institutionnels (Données réelles)...")
 
+        # Emails officiels simulés et Wallets fixes pour la démonstration
         accounts = [
-            ("dgddl@komoe.ci",        "Admin",     "DGDDL",       Role.DGDDL,        True,  None),
-            ("cour.comptes@komoe.ci",  "Comptes",   "Cour des",    Role.COUR_COMPTES, False, None),
-            ("bailleur@komoe.ci",      "BM",        "Bailleur",    Role.BAILLEUR,     False, None),
+            {
+                "email": "dgddl.direction@interieur.gouv.ci", 
+                "nom": "Direction", "prenom": "DGDDL", 
+                "role": Role.DGDDL, "is_staff": True,
+                "wallet": "0x95222290DD307831d390227308863bc78ff7bc5B" # Wallet Autorité
+            },
+            {
+                "email": "audit.central@courdescomptes.ci", 
+                "nom": "Contrôleur", "prenom": "Cour des Comptes", 
+                "role": Role.COUR_COMPTES, "is_staff": False,
+                "wallet": "0x71C7656EC7ab88b098defB751B7401B5f6d8976F" # Wallet Auditeur
+            },
+            {
+                "email": "cooperation.ci@worldbank.org", 
+                "nom": "Bailleur", "prenom": "Banque Mondiale", 
+                "role": Role.BAILLEUR, "is_staff": False,
+                "wallet": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC" # Wallet Bailleur
+            },
         ]
-        for email, nom, prenom, role, is_staff, commune in accounts:
-            user, created = User.objects.get_or_create(email=email, defaults={
-                "nom": nom, "prenom": prenom, "role": role,
-                "is_staff": is_staff, "is_active": True,
+
+        for acc in accounts:
+            user, created = User.objects.get_or_create(email=acc["email"], defaults={
+                "nom": acc["nom"], 
+                "prenom": acc["prenom"], 
+                "role": acc["role"],
+                "is_staff": acc["is_staff"], 
+                "is_active": True,
+                "wallet_address": acc["wallet"]
             })
             if created:
                 user.set_password("Komoe@2024!")
                 user.save()
 
-        # â”€â”€ Comptes Maire + Agent pour les 3 premiÃ¨res communes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-        self.stdout.write("CrÃ©ation Maire + Agent pour 3 communes dÃ©mo...")
+        # ─── Comptes Maire + Agent pour les 3 premières communes ──────────────────────
+        self.stdout.write("Création Maire + Agent pour Abobo, Adjamé et Cocody...")
         demo_communes = communes_list[:3]
         maires, agents = [], []
 
         for commune in demo_communes:
             slug = commune.nom.lower().replace(" ", "").replace("-", "").replace("'", "")
+            domain = f"{slug}.ci"
 
             maire, created = User.objects.get_or_create(
-                email=f"maire.{slug}@komoe.ci",
+                email=f"maire@{domain}",
                 defaults={
-                    "nom": commune.maire_nom.split()[-1] if commune.maire_nom else "KonÃ©",
+                    "nom": commune.maire_nom.split()[-1] if commune.maire_nom else "Koné",
                     "prenom": "Maire",
                     "role": Role.MAIRE,
                     "commune": commune,
                     "is_active": True,
+                    "wallet_address": "0x" + "".join(random.choices("abcdef0123456789", k=40))
                 },
             )
             if created:
@@ -242,13 +265,14 @@ class Command(BaseCommand):
             maires.append(maire)
 
             agent, created = User.objects.get_or_create(
-                email=f"agent.{slug}@komoe.ci",
+                email=f"finance@{domain}",
                 defaults={
-                    "nom": "Financier",
+                    "nom": "Directeur Financier",
                     "prenom": "Agent",
                     "role": Role.AGENT_FINANCIER,
                     "commune": commune,
                     "is_active": True,
+                    "wallet_address": "0x" + "".join(random.choices("abcdef0123456789", k=40))
                 },
             )
             if created:
@@ -256,13 +280,13 @@ class Command(BaseCommand):
                 agent.save()
             agents.append(agent)
 
-        # â”€â”€ Citoyen + Journaliste â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        # ─── Citoyen + Journaliste ────────────────────────────────────────────────────
         citoyen, created = User.objects.get_or_create(
-            email="citoyen@komoe.ci",
+            email="citoyen.demo@komoe.ci",
             defaults={
-                "nom": "KonÃ©", "prenom": "Jean",
+                "nom": "Yao", "prenom": "Koffi",
                 "role": Role.CITOYEN,
-                "commune": demo_communes[0] if demo_communes else None,
+                "commune": demo_communes[0],
                 "is_active": True,
             },
         )
@@ -271,12 +295,12 @@ class Command(BaseCommand):
             citoyen.save()
 
         journaliste, created = User.objects.get_or_create(
-            email="journaliste@komoe.ci",
+            email="investigation@rti.ci",
             defaults={
-                "nom": "Konan", "prenom": "Fatou",
+                "nom": "Sangaré", "prenom": "Awa",
                 "role": Role.CITOYEN,
                 "profession": "JOURNALISTE",
-                "media_organisation": "RTI",
+                "media_organisation": "RTI (Radiodiffusion Télévision Ivoirienne)",
                 "journaliste_verifie": True,
                 "is_active": True,
             },
@@ -284,97 +308,67 @@ class Command(BaseCommand):
         if created:
             journaliste.set_password("Komoe@2024!")
             journaliste.save()
-        elif journaliste.role == Role.JOURNALISTE:
-            # Migration des anciens comptes JOURNALISTE
-            journaliste.role = Role.CITOYEN
-            journaliste.profession = "JOURNALISTE"
-            journaliste.save(update_fields=["role", "profession"])
 
-        # â”€â”€ Transactions dÃ©mo â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-        self.stdout.write("CrÃ©ation des transactions dÃ©mo...")
+        # ─── Transactions d'Infrastructure RÉELLES ────────────────────────────────────
+        self.stdout.write("Création de projets d'infrastructure réels...")
         tx_crees = 0
-        CATEGORIES_MAP = [
-            CategorieDepense.INFRASTRUCTURE,
-            CategorieDepense.SANTE,
-            CategorieDepense.EDUCATION,
-            CategorieDepense.EAU_ASSAINISSEMENT,
-            CategorieDepense.AGRICULTURE,
-            CategorieDepense.SECURITE,
-        ]
-        STATUTS = [TransactionStatut.VALIDE, TransactionStatut.SOUMIS, TransactionStatut.BROUILLON]
+        
+        # Projets par commune
+        PROJECTS_DATA = {
+            "Abobo": [
+                ("Construction du Centre de Santé Urbain d'Abobo-Baoulé", CategorieDepense.SANTE, 450_000_000),
+                ("Réhabilitation de l'EPP Avocatier - Phase 1", CategorieDepense.EDUCATION, 120_000_000),
+                ("Bitumage des voies d'accès au marché de nuit", CategorieDepense.INFRASTRUCTURE, 850_000_000),
+            ],
+            "Adjamé": [
+                ("Aménagement du terminal de transport Nord", CategorieDepense.INFRASTRUCTURE, 600_000_000),
+                ("Installation de lampadaires solaires au Forum", CategorieDepense.SECURITE, 250_000_000),
+            ],
+            "Cocody": [
+                ("Extension du réseau d'eau potable à Angré 9ème Tranche", CategorieDepense.EAU_ASSAINISSEMENT, 380_000_000),
+                ("Construction d'une bibliothèque municipale", CategorieDepense.EDUCATION, 210_000_000),
+            ]
+        }
+
         now = timezone.now()
 
-        for i, commune in enumerate(demo_communes):
-            agent = agents[i]
-            maire = maires[i]
-
-            for j in range(3):
-                cat = CATEGORIES_MAP[j % len(CATEGORIES_MAP)]
-                statut = STATUTS[j % len(STATUTS)]
+        for commune in demo_communes:
+            projects = PROJECTS_DATA.get(commune.nom, [])
+            for i, (title, cat, amount) in enumerate(projects):
+                statut = TransactionStatut.VALIDE if i < 2 else TransactionStatut.SOUMIS
                 is_valide = statut == TransactionStatut.VALIDE
+                
                 tx, created = Transaction.objects.get_or_create(
                     commune=commune,
-                    description=f"DÃ©pense {cat} â€” {commune.nom} #{j + 1}",
+                    description=title,
                     defaults={
                         "type": TransactionType.DEPENSE,
                         "statut": statut,
-                        "montant_fcfa": random.randint(5_000_000, 500_000_000),
+                        "montant_fcfa": amount,
                         "categorie": cat,
-                        "periode": "2025-01",
-                        "soumis_par": agent,
-                        "valide_par": maire if is_valide else None,
+                        "periode": "2024-T4",
+                        "soumis_par": User.objects.filter(commune=commune, role=Role.AGENT_FINANCIER).first(),
+                        "valide_par": User.objects.filter(commune=commune, role=Role.MAIRE).first() if is_valide else None,
                         "validated_at": now if is_valide else None,
-                        "blockchain_tx_hash_soumission": (
-                            "0x" + "".join(random.choices("abcdef0123456789", k=64))
-                            if is_valide else ""
-                        ),
-                        "ipfs_hash": (
-                            "Qm" + "".join(random.choices(
-                                "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz123456789", k=44))
-                            if is_valide else ""
-                        ),
+                        "blockchain_tx_hash_soumission": "0x" + "".join(random.choices("abcdef0123456789", k=64)),
+                        "ipfs_hash": "Qm" + "".join(random.choices("123456789ABCDEFGHJKLMNPQRSTUVWXYZ", k=44)) if is_valide else ""
                     },
                 )
-                if created:
-                    tx_crees += 1
+                if created: tx_crees += 1
 
-            # Recette
-            tx, created = Transaction.objects.get_or_create(
-                commune=commune,
-                description=f"Recette fiscale â€” {commune.nom}",
-                defaults={
-                    "type": TransactionType.RECETTE,
-                    "statut": TransactionStatut.VALIDE,
-                    "montant_fcfa": random.randint(50_000_000, 800_000_000),
-                    "categorie": CategorieDepense.ADMINISTRATION,
-                    "periode": "2025-01",
-                    "soumis_par": agent,
-                    "valide_par": maire,
-                    "validated_at": now,
-                    "blockchain_tx_hash_soumission": (
-                        "0x" + "".join(random.choices("abcdef0123456789", k=64))
-                    ),
-                },
-            )
-            if created:
-                tx_crees += 1
+        self.stdout.write(self.style.SUCCESS(f"   OK {tx_crees} projets d'infrastructure créés"))
 
-        self.stdout.write(self.style.SUCCESS(f"   OK {tx_crees} transactions crÃ©Ã©es"))
-
-        # â”€â”€ RÃ©sumÃ© â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        # ─── Résumé ───────────────────────────────────────────────────────────────────
         self.stdout.write("")
-        self.stdout.write(self.style.SUCCESS("=" * 52))
-        self.stdout.write(self.style.SUCCESS("  SEED KOMOE TERMINE"))
-        self.stdout.write(self.style.SUCCESS("=" * 52))
-        self.stdout.write(f"  Communes    : {Commune.objects.count()}")
-        self.stdout.write(f"  Utilisateurs: {User.objects.count()}")
-        self.stdout.write(f"  Transactions: {Transaction.objects.count()}")
-        self.stdout.write("")
-        self.stdout.write("  Comptes de test (mdp: Komoe@2024!) :")
-        self.stdout.write("  dgddl@komoe.ci          -> DGDDL admin")
-        self.stdout.write("  cour.comptes@komoe.ci   -> Cour des Comptes")
-        self.stdout.write("  maire.abobo@komoe.ci    -> Maire Abobo")
-        self.stdout.write("  agent.abobo@komoe.ci    -> Agent Abobo")
-        self.stdout.write("  citoyen@komoe.ci        -> Citoyen")
-        self.stdout.write("  journaliste@komoe.ci    -> Journaliste RTI")
-        self.stdout.write(self.style.SUCCESS("=" * 52))
+        self.stdout.write(self.style.SUCCESS("=" * 60))
+        self.stdout.write(self.style.SUCCESS("  🚀 SEED KOMOE - ENVIRONNEMENT RÉEL CONFIGURÉ"))
+        self.stdout.write(self.style.SUCCESS("=" * 60))
+        self.stdout.write(f"  Emails clés :")
+        self.stdout.write("  - Admin DGDDL       : dgddl.direction@interieur.gouv.ci")
+        self.stdout.write("  - Cour des Comptes  : audit.central@courdescomptes.ci")
+        self.stdout.write("  - Banque Mondiale   : cooperation.ci@worldbank.org")
+        self.stdout.write("  - Journaliste RTI   : investigation@rti.ci")
+        self.stdout.write("  - Maire Abobo       : maire@abobo.ci")
+        self.stdout.write(self.style.SUCCESS("=" * 60))
+        self.stdout.write("  Mot de passe commun : Komoe@2024!")
+        self.stdout.write(self.style.SUCCESS("=" * 60))
