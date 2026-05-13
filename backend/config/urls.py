@@ -59,9 +59,60 @@ def diagnostic(request):
             "traceback": traceback.format_exc()
         }, status=500)
 
+def admin_changelist_test(request):
+    """Test admin changelist rendering directly"""
+    try:
+        from apps.transactions.models import Signalement
+        from apps.transactions.admin import SignalementAdmin
+        from django.contrib.admin.sites import AdminSite
+        from django.contrib.auth.models import User
+        from django.test import RequestFactory
+
+        # Create a fake request
+        factory = RequestFactory()
+        fake_request = factory.get('/admin/transactions/signalement/')
+
+        # Create a fake user
+        class FakeUser:
+            def __init__(self):
+                self.is_active = True
+                self.is_staff = True
+                self.is_superuser = True
+                self.has_perm = lambda x: True
+
+        fake_request.user = FakeUser()
+
+        # Test the admin changelist
+        admin_site = AdminSite()
+        sig_admin = SignalementAdmin(Signalement, admin_site)
+
+        # Try to render changelist
+        result = sig_admin.changelist_view(fake_request)
+
+        if hasattr(result, 'render'):
+            return JsonResponse({
+                "status": "ok",
+                "changelist_view_status": "TemplateResponse",
+                "status_code": result.status_code
+            })
+        else:
+            return JsonResponse({
+                "status": "ok",
+                "changelist_view_result": str(result)[:200]
+            })
+
+    except Exception as e:
+        return JsonResponse({
+            "status": "error",
+            "error": str(e),
+            "type": type(e).__name__,
+            "traceback": traceback.format_exc()[:500]
+        }, status=500)
+
 urlpatterns = [
     path("", home_redirect),
     path("diagnostic/", diagnostic),
+    path("admin_test/", admin_changelist_test),
     path("admin/", admin.site.urls),
     path("api/auth/", include("apps.users.urls")),
     path("api/communes/", include("apps.communes.urls")),
