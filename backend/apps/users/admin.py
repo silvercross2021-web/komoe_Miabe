@@ -9,6 +9,7 @@ class UserAdmin(BaseUserAdmin):
     list_filter = ["role", "is_active", "is_staff", "is_superuser", "email_verifie", "is_blockchain_authorized"]
     search_fields = ["email", "nom", "prenom", "wallet_address"]
     ordering = ["-created_at"]
+    readonly_fields = ["created_at"]
 
     fieldsets = (
         (None, {"fields": ("email", "password")}),
@@ -17,7 +18,7 @@ class UserAdmin(BaseUserAdmin):
         ("Blockchain", {"fields": ("wallet_address", "is_blockchain_authorized")}),
         ("Réputation & Certification", {"fields": ("reputation_score", "certification_status", "certification_reviewed_by", "profession_verified")}),
         ("Permissions", {"fields": ("is_active", "is_staff", "is_superuser", "email_verifie", "groups", "user_permissions")}),
-        ("Dates", {"fields": ("last_login",)}),
+        ("Dates", {"fields": ("created_at", "last_login")}),
     )
 
     add_fieldsets = (
