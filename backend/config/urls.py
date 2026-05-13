@@ -37,8 +37,9 @@ def diagnostic(request):
             except Exception as e:
                 queryset_tests[f"{model_name}_error"] = str(e)
 
-            # Test admin rendering
-            admin_tests = {}
+        # Test admin rendering
+        admin_tests = {}
+        try:
             for admin_name, admin_class, model_class in [
                 ("signalement", SignalementAdmin, Signalement),
                 ("commune", CommuneAdmin, Commune),
@@ -51,9 +52,8 @@ def diagnostic(request):
                     admin_tests[f"{admin_name}_list_display"] = instance.list_display
                 except Exception as e:
                     admin_tests[f"{admin_name}_admin_error"] = str(e)
-
         except Exception as e:
-            admin_tests["signalement_admin_error"] = str(e)
+            admin_tests["global_admin_error"] = str(e)
 
         return JsonResponse({
             "status": "ok",
