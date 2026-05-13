@@ -93,7 +93,9 @@ class Transaction(models.Model):
         ordering = ["-created_at"]
 
     def __str__(self):
-        return f"{self.type} {self.montant_fcfa:,} FCFA — {self.commune.nom} ({self.statut})"
+        commune_name = self.commune.nom if self.commune else "Sans Commune"
+        return f"{self.type} {self.montant_fcfa:,} FCFA — {commune_name} ({self.statut})"
+
 
 
 class Signalement(models.Model):
@@ -186,7 +188,9 @@ class Signalement(models.Model):
         ]
 
     def __str__(self):
-        return f"[{self.statut}] {self.sujet} — {self.commune.nom}"
+        commune_name = self.commune.nom if self.commune else "Sans Commune"
+        return f"[{self.statut}] {self.sujet} — {commune_name}"
+
 
     @property
     def nb_votes(self):
@@ -320,7 +324,10 @@ class VoteProposition(models.Model):
         unique_together = [("proposition", "citoyen")]
 
     def __str__(self):
-        return f"{self.citoyen.full_name} → {self.type_vote} sur {self.proposition.titre}"
+        citoyen_name = self.citoyen.full_name if self.citoyen else "Citoyen inconnu"
+        prop_title = self.proposition.titre if self.proposition else "Proposition inconnue"
+        return f"{citoyen_name} → {self.type_vote} sur {prop_title}"
+
 
 
 # ─── H10 : Système de Notifications (SSE) ────────────────────────────────────
@@ -354,7 +361,9 @@ class Notification(models.Model):
         ordering = ["-created_at"]
 
     def __str__(self):
-        return f"[{self.type_notif}] {self.titre} pour {self.user.full_name}"
+        user_name = self.user.full_name if self.user else "Utilisateur inconnu"
+        return f"[{self.type_notif}] {self.titre} pour {user_name}"
+
 
 
 # ─── H4 : Vote communautaire sur la véracité d'un signalement ────────────────

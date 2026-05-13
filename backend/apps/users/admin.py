@@ -4,7 +4,7 @@ from .models import User, ProfessionDocument, VerifiedONG, VerifiedUniversity, E
 
 
 @admin.register(User)
-class UserAdmin(BaseUserAdmin):
+class UserAdmin(admin.ModelAdmin):
     list_display = ["email", "nom", "prenom", "role", "is_active", "is_staff", "is_superuser", "date_joined"]
     list_filter = ["role", "is_active", "is_staff", "is_superuser"]
     search_fields = ["email", "nom", "prenom"]
@@ -15,18 +15,10 @@ class UserAdmin(BaseUserAdmin):
         (None, {"fields": ("email", "password")}),
         ("Informations personnelles", {"fields": ("nom", "prenom", "telephone", "profession")}),
         ("Rôle & Commune", {"fields": ("role", "commune")}),
-        ("Blockchain", {"fields": ("wallet_address", "is_blockchain_authorized")}),
-        ("Réputation & Certification", {"fields": ("reputation_score", "certification_status", "certification_reviewed_by", "profession_verified")}),
-        ("Permissions", {"fields": ("is_active", "is_staff", "is_superuser", "email_verifie", "groups", "user_permissions")}),
+        ("Permissions", {"fields": ("is_active", "is_staff", "is_superuser", "email_verifie")}),
         ("Dates", {"fields": ("date_joined", "updated_at", "last_login")}),
     )
 
-    add_fieldsets = (
-        (None, {
-            "classes": ("wide",),
-            "fields": ("email", "password1", "password2", "nom", "prenom", "role", "commune", "is_staff", "is_superuser"),
-        }),
-    )
 
 
 @admin.register(ProfessionDocument)

@@ -73,4 +73,6 @@ class Projet(models.Model):
         verbose_name_plural = "Projets"
 
     def __str__(self):
-        return f"{self.nom} - {self.commune.nom}"
+        commune_name = self.commune.nom if self.commune else "Sans Commune"
+        return f"{self.nom} - {commune_name}"
+
