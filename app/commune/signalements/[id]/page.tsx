@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { ArrowLeft, AlertTriangle, MapPin, Calendar, Users, Camera, CheckCircle2, Download, Loader2 } from "lucide-react";
 import { signalementsApi, type Signalement } from "@/lib/api";
+import { SectionCommentaires } from "@/components/ui/SectionCommentaires";
 
 export default function SignalementDetailPage() {
   const params = useParams();
@@ -136,7 +137,7 @@ export default function SignalementDetailPage() {
           </Card>
 
           {!signalement.is_reviewed && (
-            <Button 
+            <Button
               onClick={handleProcess}
               disabled={isProcessing}
               className="w-full h-16 bg-emerald-600 hover:bg-emerald-700 text-white rounded-[24px] font-black uppercase italic shadow-2xl shadow-emerald-500/20 flex items-center justify-center gap-3 transition-all hover:scale-[1.02]"
@@ -147,6 +148,12 @@ export default function SignalementDetailPage() {
           )}
         </div>
       </div>
+
+      {/* Section Commentaires */}
+      <SectionCommentaires
+        signalementId={id}
+        commentairesInitiaux={signalement.commentaires ?? []}
+      />
     </div>
   );
 }

@@ -97,6 +97,20 @@ class Transaction(models.Model):
 
 
 class Signalement(models.Model):
+    STATUT_CHOICES = [
+        ("ACTIF", "🔵 Actif - En vote"),
+        ("ENQUETE_DGDDL", "🟠 Enquête DGDDL"),
+        ("VALIDE_FRAUDE", "🔴 Fraude confirmée"),
+        ("REJETE_FAUX", "⚪ Signalement faux"),
+        ("CLOS", "⚫ Clos"),
+    ]
+
+    RESOLUTION_CHOICES = [
+        ("FRAUDE", "Fraude"),
+        ("FAUX", "Faux"),
+        ("INFONDE", "Infondé"),
+    ]
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     commune = models.ForeignKey(
         "communes.Commune",
@@ -120,8 +134,33 @@ class Signalement(models.Model):
         blank=True,
         related_name="signalements",
     )
+
+    # ─── NOUVEAUX CHAMPS ─────────────────────────────────────
+    statut = models.CharField(max_length=20, choices=STATUT_CHOICES, default="ACTIF")
+    is_prioritaire = models.BooleanField(default=False, help_text="≥4 votes = prioritaire")
     is_reviewed = models.BooleanField(default=False)
-    # Track profession at time of creation (new in Phase 1)
+
+    # Traces enquête DGDDL
+    enquete_lancee_par = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name="enquetes_lancees"
+    )
+    enquete_lancee_a = models.DateTimeField(null=True, blank=True)
+
+    # Résolution finale
+    resolution = models.CharField(max_length=20, choices=RESOLUTION_CHOICES, null=True, blank=True)
+    resolution_justification = models.TextField(blank=True, default="")
+    resolution_par = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name="resolutions_dgddl"
+    )
+    resolution_a = models.DateTimeField(null=True, blank=True)
+    # ───────────────────────────────────────────────────────────
+
     created_by_profession = models.CharField(
         max_length=20,
         choices=[
@@ -135,17 +174,34 @@ class Signalement(models.Model):
         blank=True
     )
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         db_table = "signalements"
-        ordering = ["-created_at"]
+        ordering = ["-is_prioritaire", "-created_at"]
         indexes = [
+            models.Index(fields=["statut"]),
+            models.Index(fields=["-created_at"]),
             models.Index(fields=["created_by_profession"]),
-            models.Index(fields=["is_reviewed"]),
         ]
 
     def __str__(self):
-        return f"Signalement {self.sujet} — {self.commune.nom}"
+        return f"[{self.statut}] {self.sujet} — {self.commune.nom}"
+
+    @property
+    def nb_votes(self):
+        return self.votes.count()
+
+    @property
+    def nb_credibles(self):
+        return self.votes.filter(verdict="CREDIBLE").count()
+
+    @property
+    def pct_credible(self):
+        total = self.nb_votes
+        if total == 0:
+            return 0
+        return round((self.nb_credibles / total) * 100, 1)
 
 
 # ─── H1 : Preuves jointes aux signalements (IPFS) ────────────────────────────
@@ -363,3 +419,69 @@ class RapportPDF(models.Model):
     class Meta:
         db_table = "rapports_pdf"
         ordering = ["-created_at"]
+
+
+# ─── COMMENTAIRES SUR SIGNALEMENT ─────────────────────────────────────
+
+class CommentaireSignalement(models.Model):
+    TYPE_CHOICES = [
+        ("AVIS", "💬 Avis citoyen"),
+        ("JUSTIFICATION", "📝 Justification (Maire)"),
+        ("ENQUETE", "🔍 Note d'enquête (DGDDL)"),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    signalement = models.ForeignKey(
+        Signalement,
+        on_delete=models.CASCADE,
+        related_name="commentaires"
+    )
+    auteur = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="commentaires_signalements"
+    )
+    contenu = models.TextField()
+    type_commentaire = models.CharField(max_length=20, choices=TYPE_CHOICES, default="AVIS")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "commentaires_signalements"
+        ordering = ["created_at"]
+
+    def __str__(self):
+        return f"{self.auteur.full_name} — {self.type_commentaire}"
+
+
+# ─── AUDIT TRAIL DGDDL ────────────────────────────────────────────────
+
+class ActionDGDDL(models.Model):
+    ACTION_CHOICES = [
+        ("ENQUETE_LANCEE", "🚨 Enquête lancée"),
+        ("EVIDENCE_ADDED", "📎 Preuve ajoutée"),
+        ("MAIRE_NOTIFIE", "📢 Maire notifié"),
+        ("RESOLUTION", "⚖️ Décision prise"),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    signalement = models.ForeignKey(
+        Signalement,
+        on_delete=models.CASCADE,
+        related_name="actions_dgddl"
+    )
+    action_type = models.CharField(max_length=50, choices=ACTION_CHOICES)
+    description = models.TextField()
+    effectuee_par = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "actions_dgddl"
+        ordering = ["created_at"]
+
+    def __str__(self):
+        return f"{self.action_type} — {self.signalement.sujet}"

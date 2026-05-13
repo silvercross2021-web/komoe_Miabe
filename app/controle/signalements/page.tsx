@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import { AlertCircle, Search, Download, Loader2, Filter, ThumbsUp, ThumbsDown, CheckCircle2, Clock, MapPin } from "lucide-react";
+import { AlertCircle, Search, Download, Loader2, Filter, ThumbsUp, ThumbsDown, CheckCircle2, Clock, MapPin, ExternalLink } from "lucide-react";
+import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { signalementsApi, Signalement } from "@/lib/api";
 import { formatDateShort } from "@/lib/constants";
@@ -231,24 +232,31 @@ export default function SignalementsPage() {
                     </div>
                   </div>
                 </div>
-                {!s.is_reviewed && (
-                  <div className="flex items-center gap-2 shrink-0 ml-4">
-                    <Button
-                      onClick={() => handleVote(s.id, "CREDIBLE")}
-                      disabled={votingId === s.id}
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white h-10 px-3 rounded-lg text-[9px] font-black"
-                    >
-                      {votingId === s.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <ThumbsUp className="w-4 h-4" />}
+                <div className="flex items-center gap-2 shrink-0 ml-4">
+                  <Link href={`/controle/signalements/${s.id}`}>
+                    <Button variant="outline" className="h-10 px-3 rounded-lg text-[9px] font-black">
+                      <ExternalLink className="w-4 h-4" />
                     </Button>
-                    <Button
-                      onClick={() => handleVote(s.id, "INFONDE")}
-                      disabled={votingId === s.id}
-                      className="bg-rose-600 hover:bg-rose-700 text-white h-10 px-3 rounded-lg text-[9px] font-black"
-                    >
-                      {votingId === s.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <ThumbsDown className="w-4 h-4" />}
-                    </Button>
-                  </div>
-                )}
+                  </Link>
+                  {!s.is_reviewed && (
+                    <>
+                      <Button
+                        onClick={() => handleVote(s.id, "CREDIBLE")}
+                        disabled={votingId === s.id}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white h-10 px-3 rounded-lg text-[9px] font-black"
+                      >
+                        {votingId === s.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <ThumbsUp className="w-4 h-4" />}
+                      </Button>
+                      <Button
+                        onClick={() => handleVote(s.id, "INFONDE")}
+                        disabled={votingId === s.id}
+                        className="bg-rose-600 hover:bg-rose-700 text-white h-10 px-3 rounded-lg text-[9px] font-black"
+                      >
+                        {votingId === s.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <ThumbsDown className="w-4 h-4" />}
+                      </Button>
+                    </>
+                  )}
+                </div>
               </div>
             ))}
           </div>

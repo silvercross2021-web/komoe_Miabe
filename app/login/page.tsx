@@ -52,7 +52,7 @@ const DEMO_GROUPS = [
 ];
 
 function LoginForm() {
-  const { login } = useAuth();
+  const { login, logout } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = searchParams.get("redirect") ?? "";
@@ -64,6 +64,15 @@ function LoginForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loadingKey, setLoadingKey]     = useState<string | null>(null);
   const [mode, setMode]           = useState<"auth" | "demo">("auth");
+
+  // Vider les champs + déconnecter quand on revient sur la page login
+  const switchToAuth = () => {
+    logout();
+    setEmail("");
+    setPassword("");
+    setError(null);
+    setMode("auth");
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -174,14 +183,19 @@ function LoginForm() {
                   )}
 
                   <form onSubmit={handleSubmit} className="space-y-6">
+                    {/* Inputs pièges invisibles — empêchent Chrome d'autofill les vrais champs */}
+                    <input type="text" name="fake_email" style={{ display: "none" }} readOnly tabIndex={-1} />
+                    <input type="password" name="fake_pwd" style={{ display: "none" }} readOnly tabIndex={-1} />
+
                     <div>
                       <label className={LABEL}>Adresse email</label>
                       <input
-                        type="email"
+                        type="text"
                         value={email}
                         onChange={e => setEmail(e.target.value)}
                         required
-                        autoComplete="email"
+                        autoComplete="off"
+                        name="komoe_email"
                         placeholder="vous@komoe.ci"
                         className={INPUT}
                       />
@@ -200,7 +214,8 @@ function LoginForm() {
                           value={password}
                           onChange={e => setPassword(e.target.value)}
                           required
-                          autoComplete="current-password"
+                          autoComplete="new-password"
+                          name="komoe_password"
                           placeholder="••••••••"
                           className={INPUT + " pr-11"}
                         />
@@ -282,7 +297,7 @@ function LoginForm() {
                 </p>
               </div>
               <button
-                onClick={() => setMode("auth")}
+                onClick={switchToAuth}
                 className="px-4 py-2 rounded-xl border border-black/10 dark:border-white/15 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-slate-600 dark:text-white/60 hover:text-slate-900 dark:hover:text-white text-sm font-bold transition-all"
               >
                 ← Retour connexion

@@ -1,5 +1,9 @@
 from rest_framework import serializers
-from .models import Transaction, TransactionStatut, Signalement, PreuveSignalement, PropositionDepense, VoteProposition
+from .models import (
+    Transaction, TransactionStatut, Signalement, PreuveSignalement,
+    PropositionDepense, VoteProposition, VoteSignalement,
+    CommentaireSignalement, ActionDGDDL
+)
 from ..users.serializers import UserSerializer
 from ..communes.serializers import CommuneSerializer
 
@@ -123,37 +127,53 @@ class RapportPDFSerializer(serializers.ModelSerializer):
 class SignalementSerializer(serializers.ModelSerializer):
     commune_detail = CommuneSerializer(source="commune", read_only=True)
     auteur_detail = UserSerializer(source="auteur", read_only=True)
+    enquete_lancee_par_detail = UserSerializer(source="enquete_lancee_par", read_only=True)
+    resolution_par_detail = UserSerializer(source="resolution_par", read_only=True)
     nb_preuves = serializers.SerializerMethodField()
     nb_votes = serializers.SerializerMethodField()
     pct_credible = serializers.SerializerMethodField()
+    commentaires = serializers.SerializerMethodField()
+    actions_dgddl = serializers.SerializerMethodField()
 
     class Meta:
         model = Signalement
         fields = [
             "id", "commune", "commune_detail", "sujet", "description", "transaction",
-            "auteur", "auteur_detail", "is_reviewed", "nb_preuves",
-            "nb_votes", "pct_credible", "created_by_profession", "created_at"
+            "auteur", "auteur_detail", "statut", "is_prioritaire", "is_reviewed",
+            "nb_preuves", "nb_votes", "pct_credible",
+            "enquete_lancee_par", "enquete_lancee_par_detail", "enquete_lancee_a",
+            "resolution", "resolution_justification", "resolution_par", "resolution_par_detail", "resolution_a",
+            "created_by_profession", "commentaires", "actions_dgddl", "created_at", "updated_at"
         ]
-        read_only_fields = ["id", "auteur", "is_reviewed", "created_by_profession", "created_at"]
+        read_only_fields = [
+            "id", "auteur", "is_reviewed", "is_prioritaire", "statut",
+            "enquete_lancee_par", "enquete_lancee_a", "resolution", "resolution_par", "resolution_a",
+            "created_by_profession", "created_at", "updated_at"
+        ]
 
     def get_nb_preuves(self, obj):
         return obj.preuves.count()
 
     def get_nb_votes(self, obj):
-        return obj.votes.count()
+        return obj.nb_votes
 
     def get_pct_credible(self, obj):
-        total = obj.votes.count()
-        if total == 0:
-            return 0.0
-        credible = obj.votes.filter(verdict="CREDIBLE").count()
-        return round((credible / total) * 100, 1)
+        return obj.pct_credible
+
+    def get_commentaires(self, obj):
+        from .models import CommentaireSignalement
+        commentaires = obj.commentaires.all()
+        return CommentaireSerializer(commentaires, many=True, read_only=True).data
+
+    def get_actions_dgddl(self, obj):
+        from .models import ActionDGDDL
+        actions = obj.actions_dgddl.all()
+        return ActionDGDDLSerializer(actions, many=True, read_only=True).data
 
     def create(self, validated_data):
         request = self.context.get("request")
         if request and request.user and request.user.is_authenticated:
             validated_data["auteur"] = request.user
-            # Capture profession at time of creation
             validated_data["created_by_profession"] = request.user.profession or "CITOYEN"
         instance = super().create(validated_data)
         if request and request.user and request.user.is_authenticated:
@@ -239,9 +259,48 @@ class NotificationSerializer(serializers.ModelSerializer):
 
 class ProjetTransactionSerializer(serializers.ModelSerializer):
     transaction_detail = TransactionSerializer(source="transaction", read_only=True)
-    
+
     class Meta:
         from .models import ProjetTransaction
         model = ProjetTransaction
         fields = ["id", "projet", "transaction", "transaction_detail", "montant_attribue", "created_at"]
         read_only_fields = ["id", "created_at"]
+
+
+# ─── COMMENTAIRES SIGNALEMENT ───────────────────────────
+
+class CommentaireSerializer(serializers.ModelSerializer):
+    auteur_detail = UserSerializer(source="auteur", read_only=True)
+    auteur_nom = serializers.CharField(source="auteur.full_name", read_only=True)
+    auteur_role = serializers.CharField(source="auteur.role", read_only=True)
+
+    class Meta:
+        from .models import CommentaireSignalement
+        model = CommentaireSignalement
+        fields = [
+            "id", "signalement", "auteur", "auteur_detail", "auteur_nom", "auteur_role",
+            "contenu", "type_commentaire", "created_at"
+        ]
+        read_only_fields = ["id", "signalement", "auteur", "created_at"]
+
+    def create(self, validated_data):
+        request = self.context.get("request")
+        if request and request.user:
+            validated_data["auteur"] = request.user
+        return super().create(validated_data)
+
+
+# ─── ACTIONS DGDDL ─────────────────────────────────────
+
+class ActionDGDDLSerializer(serializers.ModelSerializer):
+    effectuee_par_detail = UserSerializer(source="effectuee_par", read_only=True)
+    effectuee_par_nom = serializers.CharField(source="effectuee_par.full_name", read_only=True)
+
+    class Meta:
+        from .models import ActionDGDDL
+        model = ActionDGDDL
+        fields = [
+            "id", "signalement", "action_type", "description",
+            "effectuee_par", "effectuee_par_detail", "effectuee_par_nom", "created_at"
+        ]
+        read_only_fields = ["id", "signalement", "effectuee_par", "created_at"]

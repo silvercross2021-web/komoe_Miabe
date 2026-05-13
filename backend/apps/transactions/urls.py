@@ -12,6 +12,9 @@ from .views import (
     SignalementListCreateView,
     SignalementDetailView,
     ajouter_preuve_signalement,
+    CommentaireListCreateView,
+    lancer_enquete_signalement,
+    resoudre_enquete_signalement,
     PropositionListCreateView,
     PropositionDetailView,
     voter_proposition,
@@ -25,6 +28,8 @@ from .views import (
     open_data_stats,
     simuler_digest_mensuel,
     ProjetTransactionListView,
+    exporter_transactions_csv,
+    exporter_signalements_csv,
 )
 
 urlpatterns = [
@@ -45,6 +50,8 @@ urlpatterns = [
 
     # ─── Open Data (I5) ────────────────────────────────────────────────
     path("open/stats/", open_data_stats, name="open-data-stats"),
+    path("open/export/transactions.csv", exporter_transactions_csv, name="export-transactions-csv"),
+    path("open/export/signalements.csv", exporter_signalements_csv, name="export-signalements-csv"),
 
     # ─── Rapports PDF (H9) ─────────────────────────────────────────────
     path("commune/<int:commune_id>/rapport/", generer_rapport_pdf, name="commune-rapport-pdf"),
@@ -52,8 +59,11 @@ urlpatterns = [
     # ─── Signalements ──────────────────────────────────────────────────
     path("signalements/", SignalementListCreateView.as_view(), name="signalements-list-create"),
     path("signalements/<uuid:pk>/", SignalementDetailView.as_view(), name="signalements-detail"),
-    path("signalements/<uuid:pk>/preuves/", ajouter_preuve_signalement, name="signalements-preuves"),  # H1
-    path("signalements/<uuid:pk>/voter/", voter_signalement, name="signalements-voter"),              # H4
+    path("signalements/<uuid:pk>/preuves/", ajouter_preuve_signalement, name="signalements-preuves"),
+    path("signalements/<uuid:pk>/commentaires/", CommentaireListCreateView.as_view(), name="signalements-commentaires"),
+    path("signalements/<uuid:pk>/voter/", voter_signalement, name="signalements-voter"),
+    path("signalements/<uuid:pk>/enquete/lancer/", lancer_enquete_signalement, name="signalements-enquete-lancer"),
+    path("signalements/<uuid:pk>/enquete/resoudre/", resoudre_enquete_signalement, name="signalements-enquete-resoudre"),
 
     # ─── Propositions & Votes (H3) ─────────────────────────────────────
     path("propositions/", PropositionListCreateView.as_view(), name="propositions-list-create"),

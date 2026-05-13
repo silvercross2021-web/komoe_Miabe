@@ -457,6 +457,17 @@ export const transactionsApi = {
     ),
 };
 
+export interface Commentaire {
+  id: string;
+  signalement: string;
+  auteur: string | null;
+  auteur_nom: string;
+  auteur_role: string;
+  contenu: string;
+  type_commentaire: "AVIS" | "JUSTIFICATION" | "ENQUETE";
+  created_at: string;
+}
+
 export interface Signalement {
   id: string;
   commune: number;
@@ -466,12 +477,22 @@ export interface Signalement {
   transaction: string | null;
   auteur: string | null;
   auteur_detail: UserProfile | null;
+  statut?: string;
+  is_prioritaire?: boolean;
   is_reviewed: boolean;
   nb_preuves: number;
   nb_votes: number;
   pct_credible: number;
+  enquete_lancee_par?: string | null;
+  enquete_lancee_a?: string | null;
+  resolution?: string | null;
+  resolution_justification?: string | null;
+  resolution_par?: string | null;
+  resolution_a?: string | null;
   created_by_profession: "CITOYEN" | "JOURNALISTE" | "ONG" | "CHERCHEUR" | "BAILLEUR";
+  commentaires: Commentaire[];
   created_at: string;
+  updated_at?: string;
 }
 
 export interface SignalementCreatePayload {
@@ -562,8 +583,23 @@ export interface AppNotification {
 }
 
 export const rapportsApi = {
-  getDownloadUrl: (communeId: number) => 
-    `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/transactions/commune/${communeId}/rapport/`,
+  getDownloadUrl: (communeId: number) =>
+    `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/transactions/commune/${communeId}/rapport/`,
+  exportTransactionsCsvUrl: (params?: { commune?: number; type?: string }) => {
+    const base = `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000"}/api/transactions/open/export/transactions.csv`;
+    const qs = new URLSearchParams();
+    if (params?.commune) qs.set("commune", String(params.commune));
+    if (params?.type) qs.set("type", params.type);
+    const q = qs.toString();
+    return q ? `${base}?${q}` : base;
+  },
+  exportSignalementsCsvUrl: (params?: { commune?: number }) => {
+    const base = `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000"}/api/transactions/open/export/signalements.csv`;
+    const qs = new URLSearchParams();
+    if (params?.commune) qs.set("commune", String(params.commune));
+    const q = qs.toString();
+    return q ? `${base}?${q}` : base;
+  },
 };
 
 export const notificationsApi = {
@@ -582,10 +618,18 @@ export const signalementsApi = {
   detail: (id: string) => apiFetch<Signalement>(`/api/transactions/signalements/${id}/`),
   create: (data: SignalementCreatePayload) => apiFetch<Signalement>("/api/transactions/signalements/", { method: "POST", body: JSON.stringify(data) }),
   update: (id: string, data: Partial<Signalement>) => apiFetch<Signalement>(`/api/transactions/signalements/${id}/`, { method: "PATCH", body: JSON.stringify(data) }),
-  voter: (id: string, verdict: "CREDIBLE" | "INFONDE") => 
+  voter: (id: string, verdict: "CREDIBLE" | "INFONDE") =>
     apiFetch<{ message: string }>(`/api/transactions/signalements/${id}/voter/`, { method: "POST", body: JSON.stringify({ verdict }) }),
-  ajouterPreuve: (id: string, data: { ipfs_hash: string; ipfs_url: string; nom_fichier: string; type_fichier: string }) => 
+  ajouterPreuve: (id: string, data: { ipfs_hash: string; ipfs_url: string; nom_fichier: string; type_fichier: string }) =>
     apiFetch<PreuveSignalement>(`/api/transactions/signalements/${id}/preuves/`, { method: "POST", body: JSON.stringify(data) }),
+  listeCommentaires: (id: string) =>
+    apiFetch<Commentaire[]>(`/api/transactions/signalements/${id}/commentaires/`),
+  ajouterCommentaire: (id: string, data: { contenu: string; type_commentaire: "AVIS" | "JUSTIFICATION" | "ENQUETE" }) =>
+    apiFetch<Commentaire>(`/api/transactions/signalements/${id}/commentaires/`, { method: "POST", body: JSON.stringify(data) }),
+  lancerEnquete: (id: string) =>
+    apiFetch<Signalement>(`/api/transactions/signalements/${id}/enquete/lancer/`, { method: "PATCH" }),
+  resoudreEnquete: (id: string, data: { resolution: "FRAUDE" | "FAUX" | "INFONDE"; justification?: string }) =>
+    apiFetch<Signalement>(`/api/transactions/signalements/${id}/enquete/resoudre/`, { method: "PATCH", body: JSON.stringify(data) }),
 };
 
 export const anomaliesApi = {
@@ -596,10 +640,28 @@ export const openDataApi = {
   getStats: () => apiFetch<Record<string, unknown>>("/api/transactions/open/stats/"),
 };
 
+export interface Projet {
+  id: number;
+  commune: number;
+  commune_detail?: { id: number; nom: string; region: string };
+  nom: string;
+  description: string;
+  budget_alloue_fcfa: number;
+  taux_execution: number;
+  statut: "BROUILLON" | "EN_ATTENTE" | "EN_COURS" | "ACHEVE" | "ANNULE" | "SOUS_ENQUETE";
+  bailleur?: string | null;
+  blockchain_audit_hash?: string;
+  created_at: string;
+  updated_at?: string;
+}
+
 export const projetsApi = {
   list: (communeId?: number) => {
     const url = communeId ? `/api/communes/projets/?commune=${communeId}` : "/api/communes/projets/";
-    return apiFetch<unknown[]>(url);
+    return apiFetch<Projet[]>(url);
   },
-  getDetail: (id: number) => apiFetch<Record<string, unknown>>(`/api/communes/projets/${id}/`),
+  getDetail: (id: number) => apiFetch<Projet>(`/api/communes/projets/${id}/`),
+  update: (id: number, data: Partial<Projet>) =>
+    apiFetch<Projet>(`/api/communes/projets/${id}/`, { method: "PATCH", body: JSON.stringify(data) }),
+  delete: (id: number) => apiFetch<void>(`/api/communes/projets/${id}/`, { method: "DELETE" }),
 };

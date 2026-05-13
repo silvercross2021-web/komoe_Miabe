@@ -1,11 +1,15 @@
+import csv
 from django.utils import timezone
+from django.http import HttpResponse, StreamingHttpResponse
 from rest_framework import generics, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
-from .models import Transaction, TransactionStatut
-from .serializers import TransactionSerializer, TransactionCreateSerializer
+from rest_framework.exceptions import PermissionDenied
+from .models import Transaction, TransactionStatut, Signalement, VoteSignalement, CommentaireSignalement, ActionDGDDL
+from .serializers import TransactionSerializer, TransactionCreateSerializer, SignalementSerializer, CommentaireSerializer, ActionDGDDLSerializer
 from ..users.permissions import IsAgentFinancier, IsMaire, IsAgentOrMaire
+from ..users.models import User
 from ..blockchain.service import BlockchainService
 from .utils import formatFCFA
 
@@ -378,24 +382,60 @@ def confirmer_recette(request, pk):
 
 
 class SignalementListCreateView(generics.ListCreateAPIView):
-    """Public / Citoyen : Liste ou création d'un signalement."""
+    """Public : Liste signalements. Citoyen auth: créer."""
     from .serializers import SignalementSerializer
     serializer_class = SignalementSerializer
     permission_classes = [AllowAny]
 
     def get_queryset(self):
         from .models import Signalement
-        qs = Signalement.objects.all().select_related("commune", "auteur").prefetch_related("preuves")
+        qs = Signalement.objects.all().select_related(
+            "commune", "auteur", "enquete_lancee_par", "resolution_par"
+        ).prefetch_related("preuves", "votes", "commentaires", "actions_dgddl")
+
         commune_id = self.request.query_params.get("commune")
         if commune_id:
             qs = qs.filter(commune_id=commune_id)
-        # Filtrer par auteur si "mes_signalements=true"
+
+        # Filtrer par statut
+        statut = self.request.query_params.get("statut")
+        if statut:
+            qs = qs.filter(statut=statut)
+
+        # Filtre prioritaires
+        if self.request.query_params.get("prioritaire") == "true":
+            qs = qs.filter(is_prioritaire=True)
+
+        # Mes signalements
         if self.request.query_params.get("mes_signalements") == "true":
             if self.request.user.is_authenticated:
                 qs = qs.filter(auteur=self.request.user)
             else:
                 return qs.none()
-        return qs
+
+        return qs.order_by("-is_prioritaire", "-created_at")
+
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [IsAuthenticated()]
+        return [AllowAny()]
+
+    def perform_create(self, serializer):
+        from .models import Signalement
+        from .notifications import notify_user
+        from ..users.models import User
+
+        sig = serializer.save()
+
+        # Notifier DGDDL
+        dgddls = User.objects.filter(role="DGDDL")
+        for dg in dgddls:
+            notify_user(
+                dg,
+                "📌 Nouveau Signalement",
+                f"{self.request.user.full_name} a signalé : {sig.sujet}",
+                "SIGNALEMENT"
+            )
 
 
 class SignalementDetailView(generics.RetrieveUpdateAPIView):
@@ -604,6 +644,206 @@ def voter_signalement(request, pk):
         "message": "Merci pour votre contribution citoyenne.",
         "nb_votes": nb_votes,
         "pct_credible": pct_credible
+    })
+
+
+# ─── COMMENTAIRES SIGNALEMENT ────────────────────────────────────────────────────
+
+class CommentaireListCreateView(generics.ListCreateAPIView):
+    """Liste/crée commentaires sur un signalement."""
+    from .serializers import CommentaireSerializer
+    serializer_class = CommentaireSerializer
+    permission_classes = [AllowAny]
+
+    def get_queryset(self):
+        from .models import CommentaireSignalement
+        signalement_id = self.kwargs.get("pk")
+        return CommentaireSignalement.objects.filter(
+            signalement_id=signalement_id
+        ).select_related("auteur").order_by("created_at")
+
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [IsAuthenticated()]
+        return [AllowAny()]
+
+    def perform_create(self, serializer):
+        from .models import CommentaireSignalement, Signalement
+        from .notifications import notify_user
+
+        signalement_id = self.kwargs.get("pk")
+        signalement = Signalement.objects.get(pk=signalement_id)
+
+        type_commentaire = self.request.data.get("type_commentaire", "AVIS")
+
+        # Validation permissions
+        if type_commentaire == "JUSTIFICATION":
+            if self.request.user.role != "MAIRE" or self.request.user.commune != signalement.commune:
+                from rest_framework.exceptions import PermissionDenied
+                raise PermissionDenied("Seul le Maire peut se justifier")
+
+        if type_commentaire == "ENQUETE":
+            if self.request.user.role != "DGDDL":
+                from rest_framework.exceptions import PermissionDenied
+                raise PermissionDenied("Seul DGDDL peut ajouter des notes d'enquête")
+
+        serializer.save(
+            signalement=signalement,
+            auteur=self.request.user,
+            type_commentaire=type_commentaire
+        )
+
+
+# ─── LANCER ENQUÊTE (DGDDL ONLY) ──────────────────────────────────────────────
+
+@api_view(["PATCH"])
+@permission_classes([IsAuthenticated])
+def lancer_enquete_signalement(request, pk):
+    """DGDDL lance une enquête formelle."""
+    from .models import Signalement, ActionDGDDL
+    from .notifications import notify_user
+
+    if request.user.role != "DGDDL":
+        return Response({"error": "Seule DGDDL peut lancer une enquête"}, status=403)
+
+    try:
+        signalement = Signalement.objects.get(pk=pk)
+    except Signalement.DoesNotExist:
+        return Response({"error": "Signalement introuvable"}, status=404)
+
+    if signalement.statut not in ["ACTIF", "ENQUETE_DGDDL"]:
+        return Response({"error": "Cet signalement n'est pas éligible pour enquête"}, status=400)
+
+    # Lancer l'enquête
+    signalement.statut = "ENQUETE_DGDDL"
+    signalement.enquete_lancee_par = request.user
+    signalement.enquete_lancee_a = timezone.now()
+    signalement.save()
+
+    # Créer action d'audit
+    ActionDGDDL.objects.create(
+        signalement=signalement,
+        action_type="ENQUETE_LANCEE",
+        description=f"Enquête lancée par {request.user.full_name}",
+        effectuee_par=request.user
+    )
+
+    # Notifier Maire
+    if signalement.commune.maire:
+        notify_user(
+            signalement.commune.maire,
+            "🔍 Enquête DGDDL Lancée",
+            f"Une enquête est lancée sur : {signalement.sujet}",
+            "SIGNALEMENT"
+        )
+
+    from .serializers import SignalementSerializer
+    return Response({
+        "message": "Enquête lancée",
+        "signalement": SignalementSerializer(signalement).data
+    })
+
+
+# ─── RÉSOUDRE ENQUÊTE (DGDDL ONLY) ───────────────────────────────────────────
+
+@api_view(["PATCH"])
+@permission_classes([IsAuthenticated])
+def resoudre_enquete_signalement(request, pk):
+    """DGDDL résout l'enquête (FRAUDE/FAUX/INFONDE)."""
+    from .models import Signalement, ActionDGDDL
+    from .notifications import notify_user
+    from ..users.models import User
+
+    if request.user.role != "DGDDL":
+        return Response({"error": "Seule DGDDL peut résoudre une enquête"}, status=403)
+
+    try:
+        signalement = Signalement.objects.get(pk=pk)
+    except Signalement.DoesNotExist:
+        return Response({"error": "Signalement introuvable"}, status=404)
+
+    if signalement.statut != "ENQUETE_DGDDL":
+        return Response({"error": "Signalement n'est pas en enquête"}, status=400)
+
+    resolution = request.data.get("resolution")
+    if resolution not in ["FRAUDE", "FAUX", "INFONDE"]:
+        return Response({"error": "Résolution invalide (FRAUDE/FAUX/INFONDE)"}, status=400)
+
+    justification = request.data.get("justification", "")
+
+    # Appliquer la résolution
+    if resolution == "FRAUDE":
+        signalement.statut = "VALIDE_FRAUDE"
+        # +50 pts pour signataire
+        if signalement.auteur:
+            signalement.auteur.reputation_score = (signalement.auteur.reputation_score or 0) + 50
+            signalement.auteur.save(update_fields=["reputation_score"])
+            notify_user(
+                signalement.auteur,
+                "🎉 Fraude Confirmée !",
+                f"+50 points ! Votre signalement a révélé une fraude.",
+                "SIGNALEMENT"
+            )
+
+    elif resolution == "FAUX":
+        signalement.statut = "REJETE_FAUX"
+        # -10 pts pour signataire
+        if signalement.auteur:
+            signalement.auteur.reputation_score = max(0, (signalement.auteur.reputation_score or 0) - 10)
+            signalement.auteur.save(update_fields=["reputation_score"])
+            notify_user(
+                signalement.auteur,
+                "⚠️ Signalement Rejeté",
+                f"-10 points. Le signalement a été jugé infondé.",
+                "SIGNALEMENT"
+            )
+
+    elif resolution == "INFONDE":
+        signalement.statut = "CLOS"
+
+    signalement.resolution = resolution
+    signalement.resolution_justification = justification
+    signalement.resolution_par = request.user
+    signalement.resolution_a = timezone.now()
+    signalement.save()
+
+    # Créer action d'audit
+    ActionDGDDL.objects.create(
+        signalement=signalement,
+        action_type="RESOLUTION",
+        description=f"Résolution: {resolution}. {justification}",
+        effectuee_par=request.user
+    )
+
+    # Notifier Maire
+    if signalement.commune.maire and resolution == "FRAUDE":
+        notify_user(
+            signalement.commune.maire,
+            "⚖️ Fraude Confirmée",
+            f"L'enquête a confirmé une fraude sur : {signalement.sujet}",
+            "SIGNALEMENT"
+        )
+    elif signalement.commune.maire and resolution == "FAUX":
+        notify_user(
+            signalement.commune.maire,
+            "✅ Disculpé",
+            f"Le signalement a été jugé infondé. Vous êtes disculpé.",
+            "SIGNALEMENT"
+        )
+
+    # Notifier tous les votants
+    for vote in signalement.votes.all():
+        notify_user(
+            vote.citoyen,
+            f"⚖️ Décision: {resolution}",
+            f"L'enquête sur '{signalement.sujet}' est close.",
+            "SIGNALEMENT"
+        )
+
+    from .serializers import SignalementSerializer
+    return Response({
+        "message": f"Enquête résolue: {resolution}",
+        "signalement": SignalementSerializer(signalement).data
     })
 
 
@@ -861,6 +1101,106 @@ def generer_rapport_pdf(request, commune_id):
         return response
     except Commune.DoesNotExist:
         return Response({"error": "Commune introuvable"}, status=404)
+
+
+# ─── EXPORT CSV ───────────────────────────────────────────────────────────────
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def exporter_transactions_csv(request):
+    """
+    Export CSV de toutes les transactions validées.
+    Filtres optionnels : ?commune=<id>&type=DEPENSE|RECETTE&statut=VALIDE
+    """
+    import csv
+    from django.http import HttpResponse as DjangoHttpResponse
+
+    commune_id = request.query_params.get("commune")
+    type_filter = request.query_params.get("type")
+    statut_filter = request.query_params.get("statut", TransactionStatut.VALIDE)
+
+    qs = Transaction.objects.select_related("commune", "soumis_par", "valide_par").order_by("-created_at")
+
+    if statut_filter:
+        qs = qs.filter(statut=statut_filter)
+    if commune_id:
+        qs = qs.filter(commune_id=commune_id)
+    if type_filter:
+        qs = qs.filter(type=type_filter)
+
+    filename = f"komoe_transactions_{timezone.now().strftime('%Y%m%d')}.csv"
+    response = DjangoHttpResponse(content_type="text/csv; charset=utf-8")
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    response.write("﻿")  # BOM UTF-8 pour Excel
+
+    writer = csv.writer(response)
+    writer.writerow([
+        "ID", "Commune", "Type", "Statut", "Montant (FCFA)", "Catégorie",
+        "Description", "Période", "Hash IPFS", "TX Soumission", "TX Validation",
+        "Soumis par", "Validé par", "Date création", "Date validation"
+    ])
+
+    for tx in qs:
+        writer.writerow([
+            str(tx.id),
+            tx.commune.nom if tx.commune else "",
+            tx.type,
+            tx.statut,
+            tx.montant_fcfa,
+            tx.categorie,
+            tx.description[:200].replace("\n", " ") if tx.description else "",
+            tx.periode or "",
+            tx.ipfs_hash or "",
+            tx.blockchain_tx_hash_soumission or "",
+            tx.blockchain_tx_hash_validation or "",
+            tx.soumis_par.full_name if tx.soumis_par else "",
+            tx.valide_par.full_name if tx.valide_par else "",
+            tx.created_at.strftime("%d/%m/%Y %H:%M") if tx.created_at else "",
+            tx.validated_at.strftime("%d/%m/%Y %H:%M") if getattr(tx, "validated_at", None) else "",
+        ])
+
+    return response
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def exporter_signalements_csv(request):
+    """Export CSV de tous les signalements."""
+    import csv
+    from django.http import HttpResponse as DjangoHttpResponse
+
+    commune_id = request.query_params.get("commune")
+    qs = Signalement.objects.select_related("commune", "auteur").order_by("-created_at")
+    if commune_id:
+        qs = qs.filter(commune_id=commune_id)
+
+    filename = f"komoe_signalements_{timezone.now().strftime('%Y%m%d')}.csv"
+    response = DjangoHttpResponse(content_type="text/csv; charset=utf-8")
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    response.write("﻿")
+
+    writer = csv.writer(response)
+    writer.writerow([
+        "ID", "Commune", "Sujet", "Statut", "Votes", "% Crédible",
+        "Preuves IPFS", "Auteur", "Profession", "Résolution", "Date"
+    ])
+
+    for s in qs:
+        writer.writerow([
+            str(s.id),
+            s.commune.nom if s.commune else "",
+            s.sujet,
+            s.statut,
+            s.nb_votes,
+            s.pct_credible,
+            s.preuves.count(),
+            s.auteur.full_name if s.auteur else "Anonyme",
+            s.created_by_profession or "",
+            s.resolution or "",
+            s.created_at.strftime("%d/%m/%Y %H:%M") if s.created_at else "",
+        ])
+
+    return response
 
 
 # ─── H11 : Suivi des Projets Bailleurs ───────────────────────────────────────
