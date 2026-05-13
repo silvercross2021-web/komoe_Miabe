@@ -11,18 +11,35 @@ touch ../logs/backend.log
 python manage.py collectstatic --no-input
 python manage.py migrate
 
-# Charger les données locales exportées
-if [ -f data_labs.json ]; then
-    echo "Nettoyage de la base de données de production..."
-    python manage.py flush --no-input
-    echo "Chargement des données locales (Sync 1:1)..."
-    python manage.py loaddata data_labs.json
-    echo "Réinitialisation sécurisée des accès et certification..."
-    python manage.py shell -c "from apps.users.models import User; from apps.communes.models import Commune; users = User.objects.all(); [u.set_password('Komoe@2024!') for u in users]; [u.save() for u in users]; admin = User.objects.filter(role='DGDDL').first(); b = User.objects.filter(email='brandonnebrou257@gmail.com').first(); 
-if b:
-    b.certification_status='APPROVED'; b.is_active=True; b.email_verifie=True; b.profession_verified=True; b.is_blockchain_authorized=True; b.reputation_score=100; b.certification_reviewed_by=admin; b.save();
-print('Accès et Certifications OK !')"
-else
-    echo "Fichier data_labs.json non trouvé, passage au seed classique."
-    python manage.py seed_data
-fi
+# S'assurer que le compte admin DGDDL existe (sans écraser les données existantes)
+python manage.py shell -c "
+from apps.users.models import User
+
+# Compte DGDDL principal
+dgddl, created = User.objects.get_or_create(
+    email='dgddl@komoe.ci',
+    defaults={
+        'nom': 'Ministère',
+        'prenom': 'DGDDL',
+        'role': 'DGDDL',
+        'is_staff': True,
+        'is_superuser': True,
+        'is_active': True,
+        'email_verifie': True,
+        'is_blockchain_authorized': True,
+    }
+)
+if created:
+    dgddl.set_password('Komoe@2024!')
+    dgddl.save()
+    print('Compte DGDDL créé.')
+else:
+    # S'assurer que le compte a les droits admin même s'il existait déjà
+    if not dgddl.is_superuser:
+        dgddl.is_superuser = True
+        dgddl.is_staff = True
+        dgddl.save(update_fields=['is_superuser', 'is_staff'])
+        print('Droits admin DGDDL mis à jour.')
+    else:
+        print('Compte DGDDL déjà en place, aucune modification.')
+"
