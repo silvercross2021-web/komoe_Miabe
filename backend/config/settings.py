@@ -23,6 +23,7 @@ if not _secret_key:
 SECRET_KEY = _secret_key
 
 # S5 : DEBUG est False par défaut — doit être explicitement activé en dev
+# Deployment test marker - 2026-05-13T17:20
 DEBUG = os.getenv("DEBUG", "False") == "True"
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1,testserver").split(",")
 

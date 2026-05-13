@@ -1,0 +1,24 @@
+- generic [ref=e1]:
+  - link "Passer au contenu principal" [ref=e2] [cursor=pointer]:
+    - /url: "#content-start"
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - generic [ref=e5]:
+        - link "Administration de Django" [ref=e7] [cursor=pointer]:
+          - /url: /admin/
+        - 'button "Changer de thème (actuellement : automatique) Changer de thème (actuellement : clair) Changer de thème (actuellement : sombre)" [ref=e8]':
+          - text: "Changer de thème (actuellement : automatique) Changer de thème (actuellement : clair) Changer de thème (actuellement : sombre)"
+          - img [ref=e9]
+          - img [ref=e11]
+          - img [ref=e13]
+    - main [ref=e16]:
+      - generic [ref=e19]:
+        - generic [ref=e20]:
+          - text: "Email :"
+          - textbox "Email :" [active] [ref=e21]
+        - generic [ref=e22]:
+          - text: "Mot de passe :"
+          - textbox "Mot de passe :" [ref=e23]
+        - button "Connexion" [ref=e25]
+    - contentinfo
+  - img [ref=e26]

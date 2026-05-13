@@ -1,0 +1,230 @@
+- generic [active] [ref=e1]:
+  - link "Passer au contenu principal" [ref=e2] [cursor=pointer]:
+    - /url: "#content-start"
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - link "Administration de Django" [ref=e7] [cursor=pointer]:
+        - /url: /admin/
+      - generic [ref=e8]:
+        - text: Bienvenue,
+        - strong [ref=e9]: dgddl@komoe.ci
+        - text: .
+        - link "Voir le site" [ref=e10] [cursor=pointer]:
+          - /url: /
+        - text: /
+        - link "Modifier le mot de passe" [ref=e11] [cursor=pointer]:
+          - /url: /admin/password_change/
+        - text: /
+        - button "Déconnexion" [ref=e13] [cursor=pointer]
+        - 'button "Changer de thème (actuellement : automatique)" [ref=e14] [cursor=pointer]':
+          - generic [ref=e15]: "Changer de thème (actuellement : automatique)"
+          - img [ref=e16]
+    - main [ref=e19]:
+      - generic [ref=e20]:
+        - heading "Site d’administration" [level=1] [ref=e21]
+        - generic [ref=e22]:
+          - table "Authentification et autorisation" [ref=e24]:
+            - caption [ref=e25]:
+              - link "Authentification et autorisation" [ref=e26] [cursor=pointer]:
+                - /url: /admin/auth/
+            - rowgroup [ref=e27]:
+              - row "Groupes Ajouter Modification" [ref=e28]:
+                - rowheader "Groupes" [ref=e29]:
+                  - link "Groupes" [ref=e30] [cursor=pointer]:
+                    - /url: /admin/auth/group/
+                - cell "Ajouter" [ref=e31]:
+                  - link "Ajouter" [ref=e32] [cursor=pointer]:
+                    - /url: /admin/auth/group/add/
+                - cell "Modification" [ref=e33]:
+                  - link "Modification" [ref=e34] [cursor=pointer]:
+                    - /url: /admin/auth/group/
+          - table "Communes" [ref=e36]:
+            - caption [ref=e37]:
+              - link "Communes" [ref=e38] [cursor=pointer]:
+                - /url: /admin/communes/
+            - rowgroup [ref=e39]:
+              - row "Communes Ajouter Modification" [ref=e40]:
+                - rowheader "Communes" [ref=e41]:
+                  - link "Communes" [ref=e42] [cursor=pointer]:
+                    - /url: /admin/communes/commune/
+                - cell "Ajouter" [ref=e43]:
+                  - link "Ajouter" [ref=e44] [cursor=pointer]:
+                    - /url: /admin/communes/commune/add/
+                - cell "Modification" [ref=e45]:
+                  - link "Modification" [ref=e46] [cursor=pointer]:
+                    - /url: /admin/communes/commune/
+              - row "Projets Ajouter Modification" [ref=e47]:
+                - rowheader "Projets" [ref=e48]:
+                  - link "Projets" [ref=e49] [cursor=pointer]:
+                    - /url: /admin/communes/projet/
+                - cell "Ajouter" [ref=e50]:
+                  - link "Ajouter" [ref=e51] [cursor=pointer]:
+                    - /url: /admin/communes/projet/add/
+                - cell "Modification" [ref=e52]:
+                  - link "Modification" [ref=e53] [cursor=pointer]:
+                    - /url: /admin/communes/projet/
+          - table "Transactions" [ref=e55]:
+            - caption [ref=e56]:
+              - link "Transactions" [ref=e57] [cursor=pointer]:
+                - /url: /admin/transactions/
+            - rowgroup [ref=e58]:
+              - row "Action dgddls Ajouter Modification" [ref=e59]:
+                - rowheader "Action dgddls" [ref=e60]:
+                  - link "Action dgddls" [ref=e61] [cursor=pointer]:
+                    - /url: /admin/transactions/actiondgddl/
+                - cell "Ajouter" [ref=e62]:
+                  - link "Ajouter" [ref=e63] [cursor=pointer]:
+                    - /url: /admin/transactions/actiondgddl/add/
+                - cell "Modification" [ref=e64]:
+                  - link "Modification" [ref=e65] [cursor=pointer]:
+                    - /url: /admin/transactions/actiondgddl/
+              - row "Commentaire signalements Ajouter Modification" [ref=e66]:
+                - rowheader "Commentaire signalements" [ref=e67]:
+                  - link "Commentaire signalements" [ref=e68] [cursor=pointer]:
+                    - /url: /admin/transactions/commentairesignalement/
+                - cell "Ajouter" [ref=e69]:
+                  - link "Ajouter" [ref=e70] [cursor=pointer]:
+                    - /url: /admin/transactions/commentairesignalement/add/
+                - cell "Modification" [ref=e71]:
+                  - link "Modification" [ref=e72] [cursor=pointer]:
+                    - /url: /admin/transactions/commentairesignalement/
+              - row "Notifications Ajouter Modification" [ref=e73]:
+                - rowheader "Notifications" [ref=e74]:
+                  - link "Notifications" [ref=e75] [cursor=pointer]:
+                    - /url: /admin/transactions/notification/
+                - cell "Ajouter" [ref=e76]:
+                  - link "Ajouter" [ref=e77] [cursor=pointer]:
+                    - /url: /admin/transactions/notification/add/
+                - cell "Modification" [ref=e78]:
+                  - link "Modification" [ref=e79] [cursor=pointer]:
+                    - /url: /admin/transactions/notification/
+              - row "Preuve signalements Ajouter Modification" [ref=e80]:
+                - rowheader "Preuve signalements" [ref=e81]:
+                  - link "Preuve signalements" [ref=e82] [cursor=pointer]:
+                    - /url: /admin/transactions/preuvesignalement/
+                - cell "Ajouter" [ref=e83]:
+                  - link "Ajouter" [ref=e84] [cursor=pointer]:
+                    - /url: /admin/transactions/preuvesignalement/add/
+                - cell "Modification" [ref=e85]:
+                  - link "Modification" [ref=e86] [cursor=pointer]:
+                    - /url: /admin/transactions/preuvesignalement/
+              - row "Proposition depenses Ajouter Modification" [ref=e87]:
+                - rowheader "Proposition depenses" [ref=e88]:
+                  - link "Proposition depenses" [ref=e89] [cursor=pointer]:
+                    - /url: /admin/transactions/propositiondepense/
+                - cell "Ajouter" [ref=e90]:
+                  - link "Ajouter" [ref=e91] [cursor=pointer]:
+                    - /url: /admin/transactions/propositiondepense/add/
+                - cell "Modification" [ref=e92]:
+                  - link "Modification" [ref=e93] [cursor=pointer]:
+                    - /url: /admin/transactions/propositiondepense/
+              - row "Rapport pdfs Ajouter Modification" [ref=e94]:
+                - rowheader "Rapport pdfs" [ref=e95]:
+                  - link "Rapport pdfs" [ref=e96] [cursor=pointer]:
+                    - /url: /admin/transactions/rapportpdf/
+                - cell "Ajouter" [ref=e97]:
+                  - link "Ajouter" [ref=e98] [cursor=pointer]:
+                    - /url: /admin/transactions/rapportpdf/add/
+                - cell "Modification" [ref=e99]:
+                  - link "Modification" [ref=e100] [cursor=pointer]:
+                    - /url: /admin/transactions/rapportpdf/
+              - row "Signalements Ajouter Modification" [ref=e101]:
+                - rowheader "Signalements" [ref=e102]:
+                  - link "Signalements" [ref=e103] [cursor=pointer]:
+                    - /url: /admin/transactions/signalement/
+                - cell "Ajouter" [ref=e104]:
+                  - link "Ajouter" [ref=e105] [cursor=pointer]:
+                    - /url: /admin/transactions/signalement/add/
+                - cell "Modification" [ref=e106]:
+                  - link "Modification" [ref=e107] [cursor=pointer]:
+                    - /url: /admin/transactions/signalement/
+              - row "Transactions Ajouter Modification" [ref=e108]:
+                - rowheader "Transactions" [ref=e109]:
+                  - link "Transactions" [ref=e110] [cursor=pointer]:
+                    - /url: /admin/transactions/transaction/
+                - cell "Ajouter" [ref=e111]:
+                  - link "Ajouter" [ref=e112] [cursor=pointer]:
+                    - /url: /admin/transactions/transaction/add/
+                - cell "Modification" [ref=e113]:
+                  - link "Modification" [ref=e114] [cursor=pointer]:
+                    - /url: /admin/transactions/transaction/
+              - row "Vote propositions Ajouter Modification" [ref=e115]:
+                - rowheader "Vote propositions" [ref=e116]:
+                  - link "Vote propositions" [ref=e117] [cursor=pointer]:
+                    - /url: /admin/transactions/voteproposition/
+                - cell "Ajouter" [ref=e118]:
+                  - link "Ajouter" [ref=e119] [cursor=pointer]:
+                    - /url: /admin/transactions/voteproposition/add/
+                - cell "Modification" [ref=e120]:
+                  - link "Modification" [ref=e121] [cursor=pointer]:
+                    - /url: /admin/transactions/voteproposition/
+              - row "Vote signalements Ajouter Modification" [ref=e122]:
+                - rowheader "Vote signalements" [ref=e123]:
+                  - link "Vote signalements" [ref=e124] [cursor=pointer]:
+                    - /url: /admin/transactions/votesignalement/
+                - cell "Ajouter" [ref=e125]:
+                  - link "Ajouter" [ref=e126] [cursor=pointer]:
+                    - /url: /admin/transactions/votesignalement/add/
+                - cell "Modification" [ref=e127]:
+                  - link "Modification" [ref=e128] [cursor=pointer]:
+                    - /url: /admin/transactions/votesignalement/
+          - table "Utilisateurs" [ref=e130]:
+            - caption [ref=e131]:
+              - link "Utilisateurs" [ref=e132] [cursor=pointer]:
+                - /url: /admin/users/
+            - rowgroup [ref=e133]:
+              - row "Documents de Profession Ajouter Modification" [ref=e134]:
+                - rowheader "Documents de Profession" [ref=e135]:
+                  - link "Documents de Profession" [ref=e136] [cursor=pointer]:
+                    - /url: /admin/users/professiondocument/
+                - cell "Ajouter" [ref=e137]:
+                  - link "Ajouter" [ref=e138] [cursor=pointer]:
+                    - /url: /admin/users/professiondocument/add/
+                - cell "Modification" [ref=e139]:
+                  - link "Modification" [ref=e140] [cursor=pointer]:
+                    - /url: /admin/users/professiondocument/
+              - row "Engagements Ajouter Modification" [ref=e141]:
+                - rowheader "Engagements" [ref=e142]:
+                  - link "Engagements" [ref=e143] [cursor=pointer]:
+                    - /url: /admin/users/engagement/
+                - cell "Ajouter" [ref=e144]:
+                  - link "Ajouter" [ref=e145] [cursor=pointer]:
+                    - /url: /admin/users/engagement/add/
+                - cell "Modification" [ref=e146]:
+                  - link "Modification" [ref=e147] [cursor=pointer]:
+                    - /url: /admin/users/engagement/
+              - row "ONG Vérifiées Ajouter Modification" [ref=e148]:
+                - rowheader "ONG Vérifiées" [ref=e149]:
+                  - link "ONG Vérifiées" [ref=e150] [cursor=pointer]:
+                    - /url: /admin/users/verifiedong/
+                - cell "Ajouter" [ref=e151]:
+                  - link "Ajouter" [ref=e152] [cursor=pointer]:
+                    - /url: /admin/users/verifiedong/add/
+                - cell "Modification" [ref=e153]:
+                  - link "Modification" [ref=e154] [cursor=pointer]:
+                    - /url: /admin/users/verifiedong/
+              - row "Universités Vérifiées Ajouter Modification" [ref=e155]:
+                - rowheader "Universités Vérifiées" [ref=e156]:
+                  - link "Universités Vérifiées" [ref=e157] [cursor=pointer]:
+                    - /url: /admin/users/verifieduniversity/
+                - cell "Ajouter" [ref=e158]:
+                  - link "Ajouter" [ref=e159] [cursor=pointer]:
+                    - /url: /admin/users/verifieduniversity/add/
+                - cell "Modification" [ref=e160]:
+                  - link "Modification" [ref=e161] [cursor=pointer]:
+                    - /url: /admin/users/verifieduniversity/
+              - row "Utilisateurs Ajouter Modification" [ref=e162]:
+                - rowheader "Utilisateurs" [ref=e163]:
+                  - link "Utilisateurs" [ref=e164] [cursor=pointer]:
+                    - /url: /admin/users/user/
+                - cell "Ajouter" [ref=e165]:
+                  - link "Ajouter" [ref=e166] [cursor=pointer]:
+                    - /url: /admin/users/user/add/
+                - cell "Modification" [ref=e167]:
+                  - link "Modification" [ref=e168] [cursor=pointer]:
+                    - /url: /admin/users/user/
+        - generic [ref=e170]:
+          - heading "Actions récentes" [level=2] [ref=e171]
+          - heading "Mes actions" [level=3] [ref=e172]
+          - paragraph [ref=e173]: Aucun(e) disponible
+    - contentinfo

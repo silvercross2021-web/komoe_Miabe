@@ -9,8 +9,11 @@ from .models import (
 
 @admin.register(Transaction)
 class TransactionAdmin(admin.ModelAdmin):
-    list_display = ["id", "type"]
-    readonly_fields = ["id"]
+    list_display = ["id", "type", "statut", "montant_fcfa", "created_at"]
+    list_filter = ["type", "statut", "categorie"]
+    search_fields = ["description"]
+    ordering = ["-created_at"]
+    readonly_fields = ["id", "created_at", "updated_at"]
 
 
 @admin.register(Signalement)
