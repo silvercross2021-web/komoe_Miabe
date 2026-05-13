@@ -31,18 +31,18 @@ class UserAdmin(BaseUserAdmin):
 
 @admin.register(ProfessionDocument)
 class ProfessionDocumentAdmin(admin.ModelAdmin):
-    list_display = ["nom_fichier", "user", "profession", "type_document", "status", "reviewed_at"]
+    list_display = ["nom_fichier", "profession", "type_document", "status"]
     list_filter = ["type_document", "status", "profession"]
-    search_fields = ["nom_fichier", "user__email"]
+    search_fields = ["nom_fichier"]
     ordering = ["-created_at"]
     readonly_fields = ["id", "created_at", "updated_at"]
 
 
 @admin.register(VerifiedONG)
 class VerifiedONGAdmin(admin.ModelAdmin):
-    list_display = ["nom", "pays", "verified_by_dgddl", "verified_at"]
-    list_filter = ["pays", "verified_by_dgddl"]
-    search_fields = ["nom", "email_domain"]
+    list_display = ["nom", "pays"]
+    list_filter = ["pays"]
+    search_fields = ["nom"]
     ordering = ["nom"]
     readonly_fields = ["id", "created_at"]
 
@@ -51,15 +51,14 @@ class VerifiedONGAdmin(admin.ModelAdmin):
 class VerifiedUniversityAdmin(admin.ModelAdmin):
     list_display = ["nom", "pays", "type_institution"]
     list_filter = ["pays", "type_institution"]
-    search_fields = ["nom", "email_domain"]
+    search_fields = ["nom"]
     ordering = ["nom"]
     readonly_fields = ["id", "created_at"]
 
 
 @admin.register(Engagement)
 class EngagementAdmin(admin.ModelAdmin):
-    list_display = ["user", "type", "status", "date"]
+    list_display = ["id", "type", "status", "date"]
     list_filter = ["type", "status"]
-    search_fields = ["user__email"]
     ordering = ["-date"]
     readonly_fields = ["id", "created_at", "updated_at"]
