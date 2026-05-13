@@ -11,7 +11,9 @@ def diagnostic(request):
     """Endpoint de diagnostic pour dépanner les erreurs 500"""
     try:
         from apps.transactions.models import Signalement, VoteProposition, Transaction
+        from apps.communes.models import Commune, Projet
         from apps.transactions.admin import SignalementAdmin
+        from apps.communes.admin import CommuneAdmin
         from django.contrib.admin.sites import AdminSite
 
         # Test simple querysets
@@ -20,6 +22,8 @@ def diagnostic(request):
             ("signalement", Signalement),
             ("voteproposition", VoteProposition),
             ("transaction", Transaction),
+            ("commune", Commune),
+            ("projet", Projet),
         ]:
             try:
                 count = model_class.objects.count()
@@ -33,16 +37,20 @@ def diagnostic(request):
             except Exception as e:
                 queryset_tests[f"{model_name}_error"] = str(e)
 
-        # Test admin rendering
-        admin_tests = {}
-        try:
-            admin_site = AdminSite()
-            sig_admin = SignalementAdmin(Signalement, admin_site)
-            queryset = sig_admin.get_queryset(None)
-            admin_tests["signalement_admin_queryset"] = queryset.count()
-
-            # Try to get list_display
-            admin_tests["signalement_list_display"] = sig_admin.list_display
+            # Test admin rendering
+            admin_tests = {}
+            for admin_name, admin_class, model_class in [
+                ("signalement", SignalementAdmin, Signalement),
+                ("commune", CommuneAdmin, Commune),
+            ]:
+                try:
+                    admin_site = AdminSite()
+                    instance = admin_class(model_class, admin_site)
+                    queryset = instance.get_queryset(None)
+                    admin_tests[f"{admin_name}_admin_queryset"] = queryset.count()
+                    admin_tests[f"{admin_name}_list_display"] = instance.list_display
+                except Exception as e:
+                    admin_tests[f"{admin_name}_admin_error"] = str(e)
 
         except Exception as e:
             admin_tests["signalement_admin_error"] = str(e)
@@ -58,6 +66,38 @@ def diagnostic(request):
             "error": str(e),
             "traceback": traceback.format_exc()
         }, status=500)
+
+def simple_list_view(request):
+    """Simple HTML list that bypasses Django admin"""
+    try:
+        from apps.transactions.models import Signalement, VoteProposition, Transaction
+
+        signalements = Signalement.objects.all()[:10]
+        votes = VoteProposition.objects.all()[:10]
+        transactions = Transaction.objects.all()[:10]
+
+        html = "<h1>Django Data List (No Admin)</h1>"
+        html += "<h2>Signalements ({} total)</h2><ul>".format(Signalement.objects.count())
+        for s in signalements:
+            html += f"<li>{s.sujet} - {s.statut}</li>"
+        html += "</ul>"
+
+        html += "<h2>Votes ({} total)</h2><ul>".format(VoteProposition.objects.count())
+        for v in votes:
+            html += f"<li>{v.type_vote}</li>"
+        html += "</ul>"
+
+        html += "<h2>Transactions ({} total)</h2><ul>".format(Transaction.objects.count())
+        for t in transactions:
+            html += f"<li>{t.type} - {t.montant_fcfa}</li>"
+        html += "</ul>"
+
+        from django.http import HttpResponse
+        return HttpResponse(html, content_type="text/html")
+    except Exception as e:
+        from django.http import HttpResponse
+        return HttpResponse(f"<h1>Error</h1><pre>{str(e)}\n{traceback.format_exc()}</pre>",
+                          content_type="text/html", status=500)
 
 def admin_changelist_test(request):
     """Test admin changelist rendering with real authenticated user"""
@@ -118,6 +158,7 @@ urlpatterns = [
     path("", home_redirect),
     path("diagnostic/", diagnostic),
     path("admin_test/", admin_changelist_test),
+    path("simple_list/", simple_list_view),
     path("admin/", admin.site.urls),
     path("api/auth/", include("apps.users.urls")),
     path("api/communes/", include("apps.communes.urls")),
