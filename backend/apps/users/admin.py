@@ -6,6 +6,8 @@ from .models import User, ProfessionDocument, VerifiedONG, VerifiedUniversity, E
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
     list_display = ["email", "nom", "prenom", "role", "is_active", "is_staff", "is_superuser", "date_joined"]
+    list_filter = ["role", "is_active", "is_staff", "is_superuser"]
+    search_fields = ["email", "nom", "prenom"]
     ordering = ["-date_joined"]
     readonly_fields = ["date_joined", "updated_at"]
 

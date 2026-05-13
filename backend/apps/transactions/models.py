@@ -451,7 +451,8 @@ class CommentaireSignalement(models.Model):
         ordering = ["created_at"]
 
     def __str__(self):
-        return f"{self.auteur.full_name} — {self.type_commentaire}"
+        auteur_nom = self.auteur.full_name if self.auteur else "Utilisateur supprimé"
+        return f"{auteur_nom} — {self.type_commentaire}"
 
 
 # ─── AUDIT TRAIL DGDDL ────────────────────────────────────────────────
