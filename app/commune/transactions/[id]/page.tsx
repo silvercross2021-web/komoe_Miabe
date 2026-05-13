@@ -50,8 +50,8 @@ export default function TransactionDetailPage() {
           tx.categorie, 
           tx.ipfs_hash || "no-hash"
         ],
-        // Force les frais pour Polygon Amoy (30 Gwei)
-        maxPriorityFeePerGas: BigInt(30000000000),
+        gas: 300000n,
+        maxPriorityFeePerGas: BigInt(25000000000),
         maxFeePerGas: BigInt(30000000000),
       });
 
@@ -97,8 +97,8 @@ export default function TransactionDetailPage() {
           tx.categorie,
           tx.ipfs_hash || "no-hash",
         ],
-        // Force les frais pour Polygon Amoy (30 Gwei)
-        maxPriorityFeePerGas: BigInt(30000000000),
+        gas: 300000n,
+        maxPriorityFeePerGas: BigInt(25000000000),
         maxFeePerGas: BigInt(30000000000),
       });
 

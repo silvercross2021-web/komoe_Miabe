@@ -64,8 +64,9 @@ export default function DotationsPage() {
           String(selectedCommune.id),
           BigInt(parsedBudget)
         ],
-        maxPriorityFeePerGas: parseGwei('40'),
-        maxFeePerGas: parseGwei('40'),
+        gas: 300000n,
+        maxPriorityFeePerGas: parseGwei('25'),
+        maxFeePerGas: parseGwei('30'),
       });
 
       // 2. Mise à jour administrative (Backend) UNIQUEMENT si la signature a réussi

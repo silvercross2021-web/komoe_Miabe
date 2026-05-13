@@ -113,8 +113,8 @@ export const DepenseForm = ({ initialData, initialType, onSuccess, onCancel }: D
             created.categorie,
             realIpfsHash || "no-hash",
           ],
-          // On force les frais à 30 Gwei pour éviter l'erreur "gas price below minimum" de Polygon Amoy
-          maxPriorityFeePerGas: parseGwei('30'),
+          gas: 300000n,
+          maxPriorityFeePerGas: parseGwei('25'),
           maxFeePerGas: parseGwei('30'),
         });
 

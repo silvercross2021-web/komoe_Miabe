@@ -307,8 +307,9 @@ const MaireDashboard = ({ communeId }: { communeId: number }) => {
           abi: BUDGET_LEDGER_ABI,
           functionName: 'enregistrerRecette',
           args: [tx.id, String(tx.commune), BigInt(tx.montant_fcfa), tx.categorie, tx.ipfs_hash || "no-hash"],
-          maxPriorityFeePerGas: parseGwei('50'),
-          maxFeePerGas: parseGwei('50'),
+          gas: 300000n,
+          maxPriorityFeePerGas: parseGwei('25'),
+          maxFeePerGas: parseGwei('30'),
         });
         // 2. Mise à jour du Backend pour Recette
         await transactionsApi.confirmerRecette(tx.id, hash);
@@ -319,8 +320,9 @@ const MaireDashboard = ({ communeId }: { communeId: number }) => {
           abi: BUDGET_LEDGER_ABI,
           functionName: 'validerDepense',
           args: [tx.id, String(tx.commune), BigInt(tx.montant_fcfa), tx.categorie, tx.ipfs_hash || "no-hash"],
-          maxPriorityFeePerGas: parseGwei('50'),
-          maxFeePerGas: parseGwei('50'),
+          gas: 300000n,
+          maxPriorityFeePerGas: parseGwei('25'),
+          maxFeePerGas: parseGwei('30'),
         });
         // 2. Mise à jour du Backend pour Dépense
         await transactionsApi.valider(tx.id, hash);
