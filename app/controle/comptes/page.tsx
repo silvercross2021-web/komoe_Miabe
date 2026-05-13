@@ -90,8 +90,21 @@ export default function ComptesPage() {
     try {
       const formData = new FormData(e.target as HTMLFormElement);
       const data: any = Object.fromEntries(formData);
+      const walletAddress = data.wallet_address;
       if (!data.commune) delete data.commune;
-      await authApi.create(data);
+
+      const newUser = await authApi.create(data);
+
+      // Si wallet fourni et utilisateur est Maire/Agent, autoriser immédiatement
+      if (walletAddress && newUser && ["MAIRE", "AGENT_FINANCIER"].includes(newUser.role)) {
+        try {
+          await authApi.authorizeBlockchain(newUser.id, walletAddress);
+        } catch (blockchainErr: any) {
+          console.error("Erreur autorisation blockchain:", blockchainErr);
+          alert("Compte créé mais erreur blockchain: " + blockchainErr.message);
+        }
+      }
+
       setShowSuccess(true);
       fetchUsers();
       setTimeout(() => {
@@ -334,7 +347,18 @@ export default function ComptesPage() {
                 <FormField label="Mot de passe provisoire" required>
                   <Input name="password" type="password" required disabled={isSubmitting} className="h-14 rounded-2xl border-border focus:ring-primary" />
                 </FormField>
-    
+
+                <FormField label="Adresse Wallet (optionnel)">
+                  <Input
+                    name="wallet_address"
+                    type="text"
+                    placeholder="Ex: 0x71C7656EC7ab88b098defB751B7401B5f6d8976F"
+                    disabled={isSubmitting}
+                    className="h-14 rounded-2xl border-border focus:ring-primary font-mono text-sm"
+                  />
+                  <p className="text-xs text-muted-foreground italic mt-2">Si fournie, l'adresse sera automatiquement autorisée sur la blockchain pour les maires et agents.</p>
+                </FormField>
+
                 <div className="pt-8 border-t border-border flex justify-end gap-4">
                   <Button variant="ghost" type="button" onClick={() => setIsDrawerOpen(false)} disabled={isSubmitting} className="font-bold rounded-xl h-14 px-8">Annuler</Button>
                   <Button 

@@ -100,15 +100,19 @@ class UserSerializer(serializers.ModelSerializer):
 
 class UserCreateByAdminSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, validators=[validate_password])
+    wallet_address = serializers.CharField(max_length=42, required=False, allow_blank=True)
 
     class Meta:
         model = User
-        fields = ["email", "nom", "prenom", "role", "commune", "password"]
+        fields = ["email", "nom", "prenom", "role", "commune", "password", "wallet_address"]
 
     def create(self, validated_data):
         password = validated_data.pop("password")
+        wallet_address = validated_data.pop("wallet_address", "")
         user = User(**validated_data)
         user.set_password(password)
+        if wallet_address:
+            user.wallet_address = wallet_address
         user.save()
         return user
 
