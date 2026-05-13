@@ -1,3 +1,4 @@
+# Fixed admin configurations for all models - deployed test
 from django.contrib import admin
 from .models import (
     Transaction, Signalement, PreuveSignalement,
