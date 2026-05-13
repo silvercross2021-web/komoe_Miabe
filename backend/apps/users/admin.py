@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from .models import User
+from .models import User, ProfessionDocument, VerifiedONG, VerifiedUniversity, Engagement
 
 
 @admin.register(User)
@@ -27,3 +27,39 @@ class UserAdmin(BaseUserAdmin):
             "fields": ("email", "password1", "password2", "nom", "prenom", "role", "commune", "is_staff", "is_superuser"),
         }),
     )
+
+
+@admin.register(ProfessionDocument)
+class ProfessionDocumentAdmin(admin.ModelAdmin):
+    list_display = ["nom_fichier", "user", "profession", "type_document", "status", "reviewed_at"]
+    list_filter = ["type_document", "status", "profession"]
+    search_fields = ["nom_fichier", "user__email"]
+    ordering = ["-created_at"]
+    readonly_fields = ["id", "created_at", "updated_at"]
+
+
+@admin.register(VerifiedONG)
+class VerifiedONGAdmin(admin.ModelAdmin):
+    list_display = ["nom", "pays", "verified_by_dgddl", "verified_at"]
+    list_filter = ["pays", "verified_by_dgddl"]
+    search_fields = ["nom", "email_domain"]
+    ordering = ["nom"]
+    readonly_fields = ["id", "created_at"]
+
+
+@admin.register(VerifiedUniversity)
+class VerifiedUniversityAdmin(admin.ModelAdmin):
+    list_display = ["nom", "pays", "type_institution"]
+    list_filter = ["pays", "type_institution"]
+    search_fields = ["nom", "email_domain"]
+    ordering = ["nom"]
+    readonly_fields = ["id", "created_at"]
+
+
+@admin.register(Engagement)
+class EngagementAdmin(admin.ModelAdmin):
+    list_display = ["user", "type", "status", "date"]
+    list_filter = ["type", "status"]
+    search_fields = ["user__email"]
+    ordering = ["-date"]
+    readonly_fields = ["id", "created_at", "updated_at"]
