@@ -5,9 +5,7 @@ from .models import User, ProfessionDocument, VerifiedONG, VerifiedUniversity, E
 
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
-    list_display = ["email", "nom", "prenom", "role", "commune", "is_active", "is_staff", "is_superuser", "date_joined"]
-    list_filter = ["role", "is_active", "is_staff", "is_superuser", "email_verifie", "is_blockchain_authorized"]
-    search_fields = ["email", "nom", "prenom", "wallet_address"]
+    list_display = ["email", "nom", "prenom", "role", "is_active", "is_staff", "is_superuser", "date_joined"]
     ordering = ["-date_joined"]
     readonly_fields = ["date_joined", "updated_at"]
 
@@ -32,8 +30,6 @@ class UserAdmin(BaseUserAdmin):
 @admin.register(ProfessionDocument)
 class ProfessionDocumentAdmin(admin.ModelAdmin):
     list_display = ["nom_fichier", "profession", "type_document", "status"]
-    list_filter = ["type_document", "status", "profession"]
-    search_fields = ["nom_fichier"]
     ordering = ["-created_at"]
     readonly_fields = ["id", "created_at", "updated_at"]
 
@@ -41,8 +37,6 @@ class ProfessionDocumentAdmin(admin.ModelAdmin):
 @admin.register(VerifiedONG)
 class VerifiedONGAdmin(admin.ModelAdmin):
     list_display = ["nom", "pays"]
-    list_filter = ["pays"]
-    search_fields = ["nom"]
     ordering = ["nom"]
     readonly_fields = ["id", "created_at"]
 
@@ -50,8 +44,6 @@ class VerifiedONGAdmin(admin.ModelAdmin):
 @admin.register(VerifiedUniversity)
 class VerifiedUniversityAdmin(admin.ModelAdmin):
     list_display = ["nom", "pays", "type_institution"]
-    list_filter = ["pays", "type_institution"]
-    search_fields = ["nom"]
     ordering = ["nom"]
     readonly_fields = ["id", "created_at"]
 
@@ -59,6 +51,5 @@ class VerifiedUniversityAdmin(admin.ModelAdmin):
 @admin.register(Engagement)
 class EngagementAdmin(admin.ModelAdmin):
     list_display = ["id", "type", "status", "date"]
-    list_filter = ["type", "status"]
     ordering = ["-date"]
     readonly_fields = ["id", "created_at", "updated_at"]

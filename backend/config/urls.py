@@ -60,53 +60,58 @@ def diagnostic(request):
         }, status=500)
 
 def admin_changelist_test(request):
-    """Test admin changelist rendering directly"""
+    """Test admin changelist rendering with real authenticated user"""
     try:
         from apps.transactions.models import Signalement
         from apps.transactions.admin import SignalementAdmin
-        from django.contrib.admin.sites import AdminSite
-        from django.contrib.auth.models import User
+        from django.contrib import admin
         from django.test import RequestFactory
 
-        # Create a fake request
+        # Use the real admin site
+        admin_site = admin.site
+        sig_admin = admin_site._registry[Signalement]
+
+        # Create a request with the real user
         factory = RequestFactory()
         fake_request = factory.get('/admin/transactions/signalement/')
+        fake_request.user = request.user
+        fake_request.session = request.session
 
-        # Create a fake user
-        class FakeUser:
-            def __init__(self):
-                self.is_active = True
-                self.is_staff = True
-                self.is_superuser = True
-                self.has_perm = lambda x: True
+        # Add Django middleware attributes
+        fake_request.resolver_match = None
 
-        fake_request.user = FakeUser()
+        result = {
+            "user_info": {
+                "is_authenticated": request.user.is_authenticated,
+                "is_staff": getattr(request.user, 'is_staff', False),
+                "is_superuser": getattr(request.user, 'is_superuser', False),
+            }
+        }
 
-        # Test the admin changelist
-        admin_site = AdminSite()
-        sig_admin = SignalementAdmin(Signalement, admin_site)
+        try:
+            # Try to render changelist
+            response = sig_admin.changelist_view(fake_request)
 
-        # Try to render changelist
-        result = sig_admin.changelist_view(fake_request)
-
-        if hasattr(result, 'render'):
-            return JsonResponse({
+            result["changelist_view"] = {
                 "status": "ok",
-                "changelist_view_status": "TemplateResponse",
-                "status_code": result.status_code
-            })
-        else:
-            return JsonResponse({
-                "status": "ok",
-                "changelist_view_result": str(result)[:200]
-            })
+                "status_code": response.status_code if hasattr(response, 'status_code') else 'unknown',
+                "has_render": hasattr(response, 'render')
+            }
+        except Exception as e:
+            result["changelist_view"] = {
+                "status": "error",
+                "error": str(e),
+                "type": type(e).__name__
+            }
+
+        return JsonResponse(result)
 
     except Exception as e:
         return JsonResponse({
             "status": "error",
             "error": str(e),
             "type": type(e).__name__,
-            "traceback": traceback.format_exc()[:500]
+            "traceback": traceback.format_exc()[:1000]
         }, status=500)
 
 urlpatterns = [
