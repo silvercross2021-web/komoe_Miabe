@@ -11,28 +11,47 @@ def diagnostic(request):
     """Endpoint de diagnostic pour dépanner les erreurs 500"""
     try:
         from apps.transactions.models import Signalement, VoteProposition, Transaction
-        result = {
-            "status": "ok",
-            "signalements_count": Signalement.objects.count(),
-            "votes_count": VoteProposition.objects.count(),
-            "transactions_count": Transaction.objects.count(),
-        }
+        from apps.transactions.admin import SignalementAdmin
+        from django.contrib.admin.sites import AdminSite
 
-        # Test rendering __str__ methods
-        result["signalements_str_test"] = []
-        for s in Signalement.objects.all()[:3]:
+        # Test simple querysets
+        queryset_tests = {}
+        for model_name, model_class in [
+            ("signalement", Signalement),
+            ("voteproposition", VoteProposition),
+            ("transaction", Transaction),
+        ]:
             try:
-                result["signalements_str_test"].append({
-                    "id": str(s.id),
-                    "str": str(s)[:100]
-                })
-            except Exception as e:
-                result["signalements_str_test"].append({
-                    "id": str(s.id),
-                    "error": str(e)
-                })
+                count = model_class.objects.count()
+                queryset_tests[f"{model_name}_count"] = count
 
-        return JsonResponse(result)
+                # Try to render the first item
+                if count > 0:
+                    item = model_class.objects.first()
+                    queryset_tests[f"{model_name}_first_str"] = str(item)[:100]
+
+            except Exception as e:
+                queryset_tests[f"{model_name}_error"] = str(e)
+
+        # Test admin rendering
+        admin_tests = {}
+        try:
+            admin_site = AdminSite()
+            sig_admin = SignalementAdmin(Signalement, admin_site)
+            queryset = sig_admin.get_queryset(None)
+            admin_tests["signalement_admin_queryset"] = queryset.count()
+
+            # Try to get list_display
+            admin_tests["signalement_list_display"] = sig_admin.list_display
+
+        except Exception as e:
+            admin_tests["signalement_admin_error"] = str(e)
+
+        return JsonResponse({
+            "status": "ok",
+            "queryset_tests": queryset_tests,
+            "admin_tests": admin_tests,
+        })
     except Exception as e:
         return JsonResponse({
             "status": "error",
