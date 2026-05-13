@@ -16,9 +16,8 @@ class TransactionAdmin(admin.ModelAdmin):
 
 @admin.register(Signalement)
 class SignalementAdmin(admin.ModelAdmin):
-    list_display = ["sujet", "statut", "is_prioritaire", "created_at"]
+    list_display = ["id"]
     ordering = ["-created_at"]
-    readonly_fields = ["id", "created_at", "updated_at"]
 
 
 @admin.register(PreuveSignalement)

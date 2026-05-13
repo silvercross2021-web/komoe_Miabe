@@ -1,0 +1,1 @@
+- generic [ref=e2]: "{\"user_info\": {\"is_authenticated\": true, \"is_staff\": true, \"is_superuser\": true}, \"changelist_view\": {\"status\": \"ok\", \"status_code\": 200, \"has_render\": true}}"
