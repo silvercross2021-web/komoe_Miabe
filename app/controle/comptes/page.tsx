@@ -43,6 +43,7 @@ export default function ComptesPage() {
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [totalCount, setTotalCount] = useState(0);
   const [isPausing, setIsPausing] = useState(false);
 
   useEffect(() => {
@@ -64,10 +65,15 @@ export default function ComptesPage() {
   const fetchUsers = async () => {
     try {
       const data = await authApi.list();
-      setUsers(data?.results || []);
+      const userList = Array.isArray(data) ? data : data?.results || [];
+      const count = Array.isArray(data) ? data.length : data?.count || 0;
+      
+      setUsers(userList);
+      setTotalCount(count);
     } catch (err) {
       console.error("Erreur fetch users:", err);
       setUsers([]);
+      setTotalCount(0);
     } finally {
       setLoading(false);
     }
@@ -106,7 +112,7 @@ export default function ComptesPage() {
       }
 
       setShowSuccess(true);
-      fetchUsers();
+      await fetchUsers();
       setTimeout(() => {
         setShowSuccess(false);
         setIsDrawerOpen(false);
@@ -184,7 +190,7 @@ export default function ComptesPage() {
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
         {[
-          { label: "Total comptes", value: users.length, icon: Users, color: "text-foreground" },
+          { label: "Total comptes", value: totalCount, icon: Users, color: "text-foreground" },
           { label: "Mairies", value: users.filter(u => u.role === "MAIRE" || u.role === "AGENT_FINANCIER").length, icon: Building2, color: "text-primary" },
           { label: "Blockchain OK", value: users.filter(u => u.is_blockchain_authorized).length, icon: ShieldCheck, color: "text-emerald-500" },
           { label: "En ligne", value: users.filter(u => u.is_active).length, icon: Globe, color: "text-blue-500" },

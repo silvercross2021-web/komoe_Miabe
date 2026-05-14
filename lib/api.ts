@@ -194,7 +194,7 @@ export const authApi = {
       body: JSON.stringify({ refresh: refreshToken }),
     }),
 
-  list: () => apiFetch<{ results: UserProfile[]; count: number }>("/api/auth/users/"),
+  list: () => apiFetch<UserProfile[] | { results: UserProfile[]; count: number }>("/api/auth/users/"),
   
   create: (payload: Record<string, unknown>) => apiFetch<UserProfile>("/api/auth/users/", {
     method: "POST",

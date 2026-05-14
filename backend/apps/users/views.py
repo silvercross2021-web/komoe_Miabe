@@ -41,6 +41,7 @@ class MeView(generics.RetrieveUpdateAPIView):
 class UserListCreateView(generics.ListCreateAPIView):
     """Liste et création des comptes. Filtré par commune pour les maires/agents."""
     permission_classes = [IsAuthenticated]
+    pagination_class = None
 
     def get_serializer_class(self):
         if self.request.method == "POST":
@@ -49,7 +50,7 @@ class UserListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        queryset = User.objects.all().select_related("commune")
+        queryset = User.objects.all().select_related("commune").order_by("-date_joined")
         
         if user.role == Role.DGDDL:
             return queryset

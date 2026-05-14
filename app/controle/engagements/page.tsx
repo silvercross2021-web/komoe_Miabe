@@ -64,7 +64,7 @@ export default function EngagementsPage() {
         setError('Chargement en mode compatibilité (données en cache, 5 min)...');
 
         const usersResp = await authApi.list();
-        const users = usersResp?.results || [];
+        const users = Array.isArray(usersResp) ? usersResp : usersResp?.results || [];
 
         // Paralléliser les requêtes par lots de 10
         const batchSize = 10;

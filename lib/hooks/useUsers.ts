@@ -13,7 +13,8 @@ export function useUsersList() {
     setError(null);
     try {
       const res = await authApi.list();
-      setUsers(res.results ?? []);
+      const userList = Array.isArray(res) ? res : res.results ?? [];
+      setUsers(userList);
     } catch {
       setError("Impossible de charger les utilisateurs.");
     } finally {
