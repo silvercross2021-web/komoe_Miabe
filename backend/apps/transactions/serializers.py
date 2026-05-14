@@ -61,7 +61,7 @@ class TransactionSerializer(TransactionBaseSerializer):
     soumis_par_detail = UserSerializer(source="soumis_par", read_only=True)
     valide_par_detail = UserSerializer(source="valide_par", read_only=True)
     commune_detail = CommuneSerializer(source="commune", read_only=True)
-    projet_nom = serializers.ReadOnlyField(source="projet.nom")
+    projet_nom = serializers.ReadOnlyField(source="projet.nom", allow_null=True)
     corrections = serializers.SerializerMethodField()
 
     class Meta:
@@ -287,7 +287,7 @@ class ProjetTransactionSerializer(serializers.ModelSerializer):
     class Meta:
         from .models import ProjetTransaction
         model = ProjetTransaction
-        fields = ["id", "projet", "transaction", "transaction_detail", "montant_attribue", "created_at"]
+        fields = ["id", "projet", "transaction", "transaction_detail", "created_at"]
         read_only_fields = ["id", "created_at"]
 
 

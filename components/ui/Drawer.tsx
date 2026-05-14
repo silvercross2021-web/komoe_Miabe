@@ -3,6 +3,7 @@
 import { X } from "lucide-react";
 import { Button } from "./Button";
 import { useEffect } from "react";
+import { cn } from "@/lib/utils";
 
 export function Drawer({ isOpen, onClose, title, children, description }: any) {
   useEffect(() => {
@@ -39,7 +40,7 @@ export function Drawer({ isOpen, onClose, title, children, description }: any) {
 }
 
 // Sub-components for compatibility with shadcn-like usage
-export const DrawerContent = ({ children }: any) => <div className="space-y-6">{children}</div>;
+export const DrawerContent = ({ children, className }: any) => <div className={cn("space-y-6", className)}>{children}</div>;
 export const DrawerHeader = ({ children }: any) => <div className="mb-6">{children}</div>;
 export const DrawerTitle = ({ children }: any) => <h2 className="text-2xl font-black uppercase italic text-foreground">{children}</h2>;
 export const DrawerDescription = ({ children }: any) => <p className="text-sm text-muted-foreground font-medium mt-2">{children}</p>;

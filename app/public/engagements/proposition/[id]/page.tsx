@@ -87,8 +87,8 @@ export default function PropositionDetailPage() {
 
   if (loading) return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-      <Loader2 className="w-10 h-10 animate-spin text-indigo-500" />
-      <p className="text-slate-500">Chargement de la publication...</p>
+      <Loader2 className="w-10 h-10 animate-spin text-primary" />
+      <p className="text-muted-foreground">Chargement de la publication...</p>
     </div>
   );
 
@@ -105,14 +105,14 @@ export default function PropositionDetailPage() {
     <div className="max-w-4xl mx-auto p-4 md:p-6 pb-24 space-y-8">
       <button 
         onClick={() => router.back()}
-        className="flex items-center gap-2 text-slate-500 hover:text-indigo-600 transition-colors"
+        className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors"
       >
         <ChevronLeft className="w-5 h-5" />
         Retour aux engagements
       </button>
 
       {/* Main Content */}
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-card rounded-3xl border border-border shadow-sm overflow-hidden">
         <div className="p-6 md:p-8 space-y-6">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-3">
@@ -123,15 +123,15 @@ export default function PropositionDetailPage() {
                 {proposition.statut}
               </Badge>
             </div>
-            <div className="flex items-center gap-2 text-slate-400 text-sm">
+            <div className="flex items-center gap-2 text-muted-foreground text-sm">
               <Clock className="w-4 h-4" />
               <span>Publié le {formatDateShort(proposition.created_at)}</span>
             </div>
           </div>
 
           <div className="space-y-4">
-            <h1 className="text-3xl font-bold text-slate-900">{proposition.titre}</h1>
-            <div className="flex items-center gap-2 text-indigo-600 font-bold bg-indigo-50 w-fit px-4 py-2 rounded-2xl border border-indigo-100">
+            <h1 className="text-3xl font-bold text-foreground">{proposition.titre}</h1>
+            <div className="flex items-center gap-2 text-primary font-bold bg-primary/10 w-fit px-4 py-2 rounded-2xl border border-primary/20">
               <Wallet className="w-5 h-5" />
               <span>Budget demandé: {formatFCFA(proposition.budget_demande_fcfa)}</span>
             </div>
@@ -139,30 +139,30 @@ export default function PropositionDetailPage() {
 
           <div className="flex flex-wrap gap-6 items-center text-slate-600">
             <div className="flex items-center gap-2">
-              <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-indigo-600 font-bold">
+              <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-primary font-bold">
                 {proposition.soumis_par_detail?.full_name?.charAt(0) || "C"}
               </div>
               <div>
-                <p className="font-semibold text-sm leading-none">{proposition.soumis_par_detail?.full_name || "Anonyme"}</p>
-                <p className="text-xs text-slate-400 mt-1">Citoyen engagé</p>
+                <p className="font-semibold text-sm leading-none text-foreground">{proposition.soumis_par_detail?.full_name || "Anonyme"}</p>
+                <p className="text-xs text-muted-foreground mt-1">Citoyen engagé</p>
               </div>
             </div>
-            <div className="flex items-center gap-2 text-sm bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100">
-              <MapPin className="w-4 h-4 text-indigo-500" />
+            <div className="flex items-center gap-2 text-sm bg-muted px-3 py-1.5 rounded-xl border border-border">
+              <MapPin className="w-4 h-4 text-primary" />
               <span>{proposition.commune_detail?.nom}</span>
             </div>
           </div>
 
-          <div className="prose prose-slate max-w-none">
-            <p className="text-lg leading-relaxed text-slate-700 whitespace-pre-wrap">
+          <div className="prose prose-slate dark:prose-invert max-w-none">
+            <p className="text-lg leading-relaxed text-foreground/80 whitespace-pre-wrap">
               {proposition.description}
             </p>
           </div>
 
           {/* Attachments */}
           <div className="space-y-4 pt-6 border-t border-slate-100">
-            <h3 className="font-bold flex items-center gap-2">
-              <Paperclip className="w-5 h-5 text-indigo-500" />
+            <h3 className="font-bold flex items-center gap-2 text-foreground">
+              <Paperclip className="w-5 h-5 text-primary" />
               Pièces jointes et Preuves ({proposition.nb_preuves})
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -172,16 +172,16 @@ export default function PropositionDetailPage() {
                   href={preuve.ipfs_url} 
                   target="_blank" 
                   rel="noopener noreferrer"
-                  className="flex items-center gap-3 p-4 border border-slate-100 rounded-2xl hover:bg-slate-50 transition-all group"
+                  className="flex items-center gap-3 p-4 border border-border rounded-2xl hover:bg-muted transition-all group"
                 >
-                  <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 group-hover:scale-110 transition-transform">
+                  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
                     {preuve.type_fichier === "image" ? <ImageIcon className="w-6 h-6" /> : <FileText className="w-6 h-6" />}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-sm truncate">{preuve.nom_fichier || "Document Proposition"}</p>
-                    <p className="text-xs text-slate-400">Certifié via IPFS</p>
+                    <p className="font-semibold text-sm truncate text-foreground">{preuve.nom_fichier || "Document Proposition"}</p>
+                    <p className="text-xs text-muted-foreground">Certifié via IPFS</p>
                   </div>
-                  <ExternalLink className="w-4 h-4 text-slate-300 group-hover:text-blue-600" />
+                  <ExternalLink className="w-4 h-4 text-muted-foreground group-hover:text-primary" />
                 </a>
               ))}
               {proposition.preuves?.length === 0 && (
@@ -192,13 +192,13 @@ export default function PropositionDetailPage() {
         </div>
 
         {/* Action Bar */}
-        <div className="bg-slate-50 border-t border-slate-100 p-6 flex flex-wrap items-center justify-between gap-6">
+        <div className="bg-muted border-t border-border p-6 flex flex-wrap items-center justify-between gap-6">
           <div className="flex-1 space-y-2">
              <div className="flex items-center justify-between text-sm font-semibold mb-1">
-                <span className="text-blue-600">{proposition.pct_soutien}% de soutien</span>
-                <span className="text-slate-400">{proposition.nb_soutiens + proposition.nb_oppositions} votes</span>
+                <span className="text-blue-500">{proposition.pct_soutien}% de soutien</span>
+                <span className="text-muted-foreground">{proposition.nb_soutiens + proposition.nb_oppositions} votes</span>
              </div>
-             <div className="w-full bg-slate-200 h-3 rounded-full overflow-hidden flex">
+             <div className="w-full bg-border h-3 rounded-full overflow-hidden flex">
                 <div 
                   className="bg-blue-600 h-full transition-all duration-500" 
                   style={{ width: `${proposition.pct_soutien}%` }} 
@@ -238,8 +238,8 @@ export default function PropositionDetailPage() {
 
       {/* Discussion Section */}
       <div className="space-y-6">
-        <h2 className="text-2xl font-bold flex items-center gap-3">
-          <MessageSquare className="w-6 h-6 text-indigo-500" />
+        <h2 className="text-2xl font-bold flex items-center gap-3 text-foreground">
+          <MessageSquare className="w-6 h-6 text-primary" />
           Discussions ({proposition.commentaires?.length || 0})
         </h2>
 
@@ -254,21 +254,21 @@ export default function PropositionDetailPage() {
                 </p>
               </div>
             )}
-            <form onSubmit={handleAddComment} className={`bg-white rounded-2xl border border-slate-200 p-4 shadow-sm ${(user.role === "CITOYEN" && user.certification_status !== "APPROVED") ? "opacity-50 pointer-events-none" : ""}`}>
+            <form onSubmit={handleAddComment} className={`bg-card rounded-2xl border border-border p-4 shadow-sm ${(user.role === "CITOYEN" && user.certification_status !== "APPROVED") ? "opacity-50 pointer-events-none" : ""}`}>
               <textarea 
                 required
                 disabled={user.role === "CITOYEN" && user.certification_status !== "APPROVED"}
                 rows={3}
                 placeholder="Que pensez-vous de ce projet ? Partagez vos idées..."
-                className="w-full p-4 bg-slate-50 border border-slate-100 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 resize-none"
+                className="w-full p-4 bg-muted border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none text-foreground"
                 value={commentContent}
                 onChange={e => setCommentContent(e.target.value)}
               />
               <div className="flex items-center justify-between mt-3">
-                <button type="button" className="p-2 text-slate-400 hover:text-indigo-600 transition-colors">
+                <button type="button" className="p-2 text-muted-foreground hover:text-primary transition-colors">
                   <ImageIcon className="w-5 h-5" />
                 </button>
-                <Button disabled={commentLoading || (user.role === "CITOYEN" && user.certification_status !== "APPROVED")} className="rounded-xl px-6 bg-indigo-600 hover:bg-indigo-700 text-white">
+                <Button disabled={commentLoading || (user.role === "CITOYEN" && user.certification_status !== "APPROVED")} className="rounded-xl px-6 bg-primary hover:bg-primary/90 text-primary-foreground">
                   {commentLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Envoyer"}
                   <Send className="w-4 h-4 ml-2" />
                 </Button>
@@ -277,9 +277,9 @@ export default function PropositionDetailPage() {
             </form>
           </div>
         ) : (
-          <div className="bg-slate-100 p-6 rounded-2xl text-center border border-dashed border-slate-300">
-            <p className="text-slate-600">Vous devez être connecté pour participer à la discussion.</p>
-            <Button onClick={() => router.push("/login")} variant="link" className="text-indigo-600 font-bold">
+          <div className="bg-muted p-6 rounded-2xl text-center border border-dashed border-border">
+            <p className="text-muted-foreground">Vous devez être connecté pour participer à la discussion.</p>
+            <Button onClick={() => router.push("/login")} variant="link" className="text-primary font-bold">
               Se connecter
             </Button>
           </div>
@@ -292,16 +292,16 @@ export default function PropositionDetailPage() {
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
               key={comment.id} 
-              className="p-4 rounded-2xl border border-slate-100 bg-white shadow-sm"
+              className="p-4 rounded-2xl border border-border bg-card shadow-sm"
             >
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-500">
+                  <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-bold text-muted-foreground">
                     {comment.auteur_nom?.charAt(0)}
                   </div>
-                  <span className="font-bold text-sm">{comment.auteur_nom}</span>
+                  <span className="font-bold text-sm text-foreground">{comment.auteur_nom}</span>
                 </div>
-                <span className="text-xs text-slate-400">{formatDateShort(comment.created_at)}</span>
+                <span className="text-xs text-muted-foreground">{formatDateShort(comment.created_at)}</span>
               </div>
               <p className="text-slate-700 text-sm leading-relaxed">
                 {comment.contenu}

@@ -1,0 +1,70 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e6] [cursor=pointer]:
+    - button "Open Next.js Dev Tools" [ref=e7]:
+      - img [ref=e8]
+    - generic [ref=e11]:
+      - button "Open issues overlay" [ref=e12]:
+        - generic [ref=e13]:
+          - generic [ref=e14]: "0"
+          - generic [ref=e15]: "1"
+        - generic [ref=e16]: Issue
+      - button "Collapse issues badge" [ref=e17]:
+        - img [ref=e18]
+  - alert [ref=e20]
+  - generic [ref=e22]:
+    - button "Passer en mode sombre" [ref=e24]:
+      - img [ref=e25]
+    - generic [ref=e27]:
+      - generic [ref=e28]:
+        - generic [ref=e29]:
+          - img "KOMOE" [ref=e31]
+          - generic [ref=e32]: KOMOE
+        - heading "Transparence. Blockchain. Intégrité." [level=1] [ref=e33]:
+          - text: Transparence. Blockchain.
+          - text: Intégrité.
+        - paragraph [ref=e34]: Connectez-vous pour accéder à votre espace personnalisé et contribuer à la gouvernance transparente des communes ivoiriennes.
+        - generic [ref=e35]:
+          - generic [ref=e36]:
+            - img [ref=e38]
+            - generic [ref=e41]:
+              - paragraph [ref=e42]: Accès Sécurisé JWT
+              - paragraph [ref=e43]: Vos données sont protégées et chiffrées.
+          - generic [ref=e44]:
+            - img [ref=e46]
+            - generic [ref=e48]:
+              - paragraph [ref=e49]: Tableau de bord adapté
+              - paragraph [ref=e50]: Interface personnalisée selon votre rôle.
+          - generic [ref=e51]:
+            - img [ref=e53]
+            - generic [ref=e55]:
+              - paragraph [ref=e56]: Temps réel Polygon
+              - paragraph [ref=e57]: Transactions vérifiables instantanément.
+      - generic [ref=e60]:
+        - generic [ref=e61]:
+          - heading "Connexion" [level=2] [ref=e62]
+          - paragraph [ref=e63]: Entrez vos identifiants pour accéder à votre espace.
+        - generic [ref=e93]: Aucun compte actif n'a été trouvé avec les identifiants fournis
+        - generic [ref=e64]:
+          - generic [ref=e65]:
+            - generic [ref=e66]: Adresse email
+            - textbox "vous@komoe.ci" [ref=e67]: dgddl@gouv.ci
+          - generic [ref=e68]:
+            - generic [ref=e69]:
+              - generic [ref=e70]: Mot de passe
+              - link "Oublié ?" [ref=e71] [cursor=pointer]:
+                - /url: /forgot-password
+            - generic [ref=e72]:
+              - textbox "••••••••" [ref=e73]: Komoe@2024!
+              - button [ref=e74]:
+                - img [ref=e75]
+          - button "Se connecter" [ref=e78]:
+            - generic [ref=e94]:
+              - img [ref=e95]
+              - text: Se connecter
+              - img [ref=e98]
+        - generic [ref=e87]: ou
+        - button "Explorer en Mode Démo →" [ref=e89]
+        - paragraph [ref=e91]:
+          - text: Pas encore de compte ?
+          - link "S'inscrire" [ref=e92] [cursor=pointer]:
+            - /url: /register

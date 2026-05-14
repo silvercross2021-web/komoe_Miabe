@@ -1,0 +1,279 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e6] [cursor=pointer]:
+    - button "Open Next.js Dev Tools" [ref=e7]:
+      - img [ref=e8]
+    - generic [ref=e11]:
+      - button "Open issues overlay" [ref=e12]:
+        - generic [ref=e13]:
+          - generic [ref=e14]: "0"
+          - generic [ref=e15]: "1"
+        - generic [ref=e16]: Issue
+      - button "Collapse issues badge" [ref=e17]:
+        - img [ref=e18]
+  - alert [ref=e20]
+  - generic [ref=e93]:
+    - complementary [ref=e94]:
+      - generic [ref=e95]:
+        - generic [ref=e96]:
+          - img "KOMOE" [ref=e98]
+          - heading "KOMOE" [level=1] [ref=e99]
+        - button [ref=e100]:
+          - img [ref=e101]
+      - navigation [ref=e103]:
+        - link "Vue nationale" [ref=e104] [cursor=pointer]:
+          - /url: /controle/dashboard
+          - img [ref=e105]
+          - generic [ref=e110]: Vue nationale
+        - link "Dotations & Budgets" [ref=e111] [cursor=pointer]:
+          - /url: /controle/dotations
+          - img [ref=e112]
+          - generic [ref=e115]: Dotations & Budgets
+        - link "Gestion des accès" [ref=e116] [cursor=pointer]:
+          - /url: /controle/comptes
+          - img [ref=e117]
+          - generic [ref=e122]: Gestion des accès
+        - link "Validation Sentinelle" [ref=e123] [cursor=pointer]:
+          - /url: /controle/certification
+          - img [ref=e124]
+          - generic [ref=e127]: Validation Sentinelle
+        - link "Les communes" [ref=e128] [cursor=pointer]:
+          - /url: /controle/communes
+          - img [ref=e129]
+          - generic [ref=e132]: Les communes
+        - link "Classement" [ref=e133] [cursor=pointer]:
+          - /url: /controle/classement
+          - img [ref=e134]
+          - generic [ref=e136]: Classement
+        - link "Alertes & retards" [ref=e137] [cursor=pointer]:
+          - /url: /controle/alertes
+          - img [ref=e138]
+          - generic [ref=e140]: Alertes & retards
+        - link "Transactions" [ref=e141] [cursor=pointer]:
+          - /url: /controle/transactions
+          - img [ref=e142]
+          - generic [ref=e145]: Transactions
+        - link "Engagements citoyens" [ref=e146] [cursor=pointer]:
+          - /url: /controle/engagements
+          - img [ref=e147]
+          - generic [ref=e150]: Engagements citoyens
+        - link "Signalements" [ref=e151] [cursor=pointer]:
+          - /url: /controle/signalements
+          - img [ref=e152]
+          - generic [ref=e154]: Signalements
+        - link "Preuves blockchain" [ref=e155] [cursor=pointer]:
+          - /url: /controle/preuves
+          - img [ref=e156]
+          - generic [ref=e159]: Preuves blockchain
+        - link "Anomalies" [ref=e160] [cursor=pointer]:
+          - /url: /controle/anomalies
+          - img [ref=e161]
+          - generic [ref=e163]: Anomalies
+        - link "Réseau Polygon" [ref=e164] [cursor=pointer]:
+          - /url: /controle/blockchain
+          - img [ref=e165]
+          - generic [ref=e170]: Réseau Polygon
+        - link "Rapports officiels" [ref=e171] [cursor=pointer]:
+          - /url: /controle/rapports
+          - img [ref=e172]
+          - generic [ref=e175]: Rapports officiels
+        - link "Export / API" [ref=e176] [cursor=pointer]:
+          - /url: /controle/export
+          - img [ref=e177]
+          - generic [ref=e180]: Export / API
+        - link "Mon profil" [ref=e181] [cursor=pointer]:
+          - /url: /controle/profil
+          - img [ref=e182]
+          - generic [ref=e186]: Mon profil
+      - generic [ref=e188]:
+        - generic [ref=e191]: Polygon Amoy
+        - link "Changer de profil" [ref=e192] [cursor=pointer]:
+          - /url: /login
+          - img [ref=e193]
+          - generic [ref=e196]: Changer de profil
+    - generic [ref=e197]:
+      - banner [ref=e198]:
+        - generic [ref=e200]:
+          - generic [ref=e201]: KOMOE
+          - generic [ref=e203]: DGDDL / Ministère de l'Intérieur
+        - generic [ref=e204]:
+          - button "Changer le thème" [ref=e205]:
+            - img [ref=e206]
+            - generic [ref=e212]: Changer le thème
+          - button [ref=e213]:
+            - img [ref=e214]
+          - link "Quitter" [ref=e217] [cursor=pointer]:
+            - /url: /login
+            - button "Quitter" [ref=e218]:
+              - img [ref=e219]
+              - text: Quitter
+          - generic [ref=e222]:
+            - generic [ref=e223]:
+              - generic [ref=e224]:
+                - generic [ref=e225]: 👑 Super Admin
+                - generic [ref=e226]: ⭐ 0
+                - paragraph [ref=e227]: DGDDL — Ministère
+              - generic [ref=e232]: Polygon Amoy
+            - button "Connecter" [ref=e234] [cursor=pointer]
+      - main [ref=e235]:
+        - generic [ref=e237]:
+          - generic [ref=e239]:
+            - heading "Tableau de bord" [level=2] [ref=e240]
+            - generic [ref=e241]:
+              - generic [ref=e242]: DGDDL / Ministère de l'Intérieur
+              - generic [ref=e243]: Données en temps réel sur la blockchain
+          - generic [ref=e244]:
+            - generic [ref=e245]:
+              - generic [ref=e248]:
+                - generic [ref=e249]:
+                  - paragraph [ref=e250]: Communes supervisées
+                  - img [ref=e252]
+                - heading "202" [level=3] [ref=e257]
+              - generic [ref=e260]:
+                - generic [ref=e261]:
+                  - paragraph [ref=e262]: Budget national total
+                  - img [ref=e264]
+                - generic [ref=e268]:
+                  - heading "301500M" [level=3] [ref=e269]
+                  - generic [ref=e270]: FCFA
+              - generic [ref=e273]:
+                - generic [ref=e274]:
+                  - paragraph [ref=e275]: Dépenses consolidées
+                  - img [ref=e277]
+                - generic [ref=e280]:
+                  - heading "271.4K" [level=3] [ref=e281]
+                  - generic [ref=e282]: FCFA
+              - generic [ref=e285]:
+                - generic [ref=e286]:
+                  - paragraph [ref=e287]: Alertes en attente
+                  - img [ref=e289]
+                - heading "0" [level=3] [ref=e292]
+            - generic [ref=e293]:
+              - generic [ref=e294]:
+                - generic [ref=e295]:
+                  - heading "Palmarès Transparence" [level=3] [ref=e297]
+                  - generic [ref=e298]:
+                    - generic [ref=e299]:
+                      - generic [ref=e300]:
+                        - generic [ref=e301]: "1"
+                        - generic [ref=e302]:
+                          - paragraph [ref=e303]: Grand-Bassam
+                          - paragraph [ref=e304]: AUTRE
+                      - generic [ref=e306]: "65"
+                    - generic [ref=e309]:
+                      - generic [ref=e310]:
+                        - generic [ref=e311]: "2"
+                        - generic [ref=e312]:
+                          - paragraph [ref=e313]: Abengourou
+                          - paragraph [ref=e314]: AUTRE
+                      - generic [ref=e316]: "50"
+                    - generic [ref=e319]:
+                      - generic [ref=e320]:
+                        - generic [ref=e321]: "3"
+                        - generic [ref=e322]:
+                          - paragraph [ref=e323]: Abobo
+                          - paragraph [ref=e324]: ABIDJAN
+                      - generic [ref=e326]: "50"
+                    - generic [ref=e329]:
+                      - generic [ref=e330]:
+                        - generic [ref=e331]: "4"
+                        - generic [ref=e332]:
+                          - paragraph [ref=e333]: Aboisso
+                          - paragraph [ref=e334]: AUTRE
+                      - generic [ref=e336]: "50"
+                    - generic [ref=e339]:
+                      - generic [ref=e340]:
+                        - generic [ref=e341]: "5"
+                        - generic [ref=e342]:
+                          - paragraph [ref=e343]: Adiaké
+                          - paragraph [ref=e344]: AUTRE
+                      - generic [ref=e346]: "50"
+                    - generic [ref=e349]:
+                      - generic [ref=e350]:
+                        - generic [ref=e351]: "6"
+                        - generic [ref=e352]:
+                          - paragraph [ref=e353]: Adjamé
+                          - paragraph [ref=e354]: ABIDJAN
+                      - generic [ref=e356]: "50"
+                    - generic [ref=e359]:
+                      - generic [ref=e360]:
+                        - generic [ref=e361]: "7"
+                        - generic [ref=e362]:
+                          - paragraph [ref=e363]: Adzopé
+                          - paragraph [ref=e364]: AUTRE
+                      - generic [ref=e366]: "50"
+                    - generic [ref=e369]:
+                      - generic [ref=e370]:
+                        - generic [ref=e371]: "8"
+                        - generic [ref=e372]:
+                          - paragraph [ref=e373]: Afféry
+                          - paragraph [ref=e374]: AUTRE
+                      - generic [ref=e376]: "50"
+                - generic [ref=e379]:
+                  - generic [ref=e380]:
+                    - heading "Détection Anomalies (IA)" [level=3] [ref=e381]:
+                      - img [ref=e382]
+                      - text: Détection Anomalies (IA)
+                    - button [ref=e384]:
+                      - img [ref=e385]
+                  - generic [ref=e391]:
+                    - img [ref=e392]
+                    - paragraph [ref=e394]: Aucune anomalie détectée
+              - generic [ref=e396]:
+                - heading "Flux d'activité national" [level=3] [ref=e398]:
+                  - img [ref=e399]
+                  - text: Flux d'activité national
+                - generic [ref=e402]:
+                  - generic [ref=e403] [cursor=pointer]:
+                    - generic [ref=e404]:
+                      - img [ref=e406]
+                      - generic [ref=e409]:
+                        - paragraph [ref=e410]: azertyuiopù ùmlkjhgfds
+                        - generic [ref=e411]:
+                          - generic [ref=e412]: Infrastructure
+                          - generic [ref=e414]: agent test
+                          - generic [ref=e416]: 2026-05
+                          - generic [ref=e418]: 11 mai 2026
+                        - link "0xaa6a...47d0" [ref=e419]:
+                          - /url: https://amoy.polygonscan.com/tx/0xaa6a9837f3e0e360b7153042390c19e623b888df5afa503a874738175d1947d0
+                          - text: 0xaa6a...47d0
+                          - img [ref=e420]
+                    - generic [ref=e425]:
+                      - generic [ref=e426]: RECETTE
+                      - paragraph [ref=e427]: + 141 600 FCFA
+                      - generic [ref=e428]: Confirmé
+                  - generic [ref=e429] [cursor=pointer]:
+                    - generic [ref=e430]:
+                      - img [ref=e432]
+                      - generic [ref=e435]:
+                        - paragraph [ref=e436]: AZERTYUIOBHJK.L/M
+                        - generic [ref=e437]:
+                          - generic [ref=e438]: Infrastructure
+                          - generic [ref=e440]: agent test
+                          - generic [ref=e442]: 2026-05
+                          - generic [ref=e444]: 11 mai 2026
+                        - link "0x1f8d...4440" [ref=e445]:
+                          - /url: https://amoy.polygonscan.com/tx/0x1f8dc48ff338a4081ee4e76c55ff5e1daf1075ed742ae3d204a3a7b8e1184440
+                          - text: 0x1f8d...4440
+                          - img [ref=e446]
+                    - generic [ref=e451]:
+                      - generic [ref=e452]: DEPENSE
+                      - paragraph [ref=e453]: − 35 400 FCFA
+                      - generic [ref=e454]: Confirmé
+                  - generic [ref=e455] [cursor=pointer]:
+                    - generic [ref=e456]:
+                      - img [ref=e458]
+                      - generic [ref=e461]:
+                        - paragraph [ref=e462]: AZERTYUIOPKJYTR
+                        - generic [ref=e463]:
+                          - generic [ref=e464]: EDUCATION
+                          - generic [ref=e466]: agent test
+                          - generic [ref=e468]: 2026-05
+                          - generic [ref=e470]: 10 mai 2026
+                        - link "0x5de7...0e23" [ref=e471]:
+                          - /url: https://amoy.polygonscan.com/tx/0x5de73cc59680990465e93250eaf23df9e1d9c9c19633fe0b7adc529e375f0e23
+                          - text: 0x5de7...0e23
+                          - img [ref=e472]
+                    - generic [ref=e477]:
+                      - generic [ref=e478]: DEPENSE
+                      - paragraph [ref=e479]: − 236 000 FCFA
+                      - generic [ref=e480]: Confirmé
