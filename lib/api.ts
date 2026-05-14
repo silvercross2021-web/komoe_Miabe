@@ -475,24 +475,35 @@ export interface Signalement {
   sujet: string;
   description: string;
   transaction: string | null;
+  transaction_detail?: Transaction;
   auteur: string | null;
   auteur_detail: UserProfile | null;
-  statut?: string;
-  is_prioritaire?: boolean;
+  statut: "NOUVEAU" | "ACTIF" | "VIRAL" | "ENQUETE_DGDDL" | "VALIDE_FRAUDE" | "REJETE_FAUX" | "CLOS";
+  is_prioritaire: boolean;
   is_reviewed: boolean;
   nb_preuves: number;
   nb_votes: number;
   pct_credible: number;
   enquete_lancee_par?: string | null;
   enquete_lancee_a?: string | null;
-  resolution?: string | null;
+  resolution?: "FRAUDE" | "FAUX" | "INFONDE" | null;
   resolution_justification?: string | null;
   resolution_par?: string | null;
   resolution_a?: string | null;
   created_by_profession: "CITOYEN" | "JOURNALISTE" | "ONG" | "CHERCHEUR" | "BAILLEUR";
   commentaires: Commentaire[];
+  preuves: PreuveSignalement[];
+  actions_dgddl: ActionDGDDL[];
   created_at: string;
   updated_at?: string;
+}
+
+export interface ActionDGDDL {
+  id: string;
+  action_type: string;
+  description: string;
+  effectuee_par_nom: string;
+  created_at: string;
 }
 
 export interface SignalementCreatePayload {
@@ -532,8 +543,30 @@ export interface Proposition {
   score_vote: number;
   pct_soutien: number;
   mon_vote: "SOUTIEN" | "OPPOSITION" | null;
+  commentaires: CommentaireProposition[];
+  preuves: PreuveProposition[];
+  nb_preuves: number;
   created_at: string;
   updated_at: string;
+}
+
+export interface CommentaireProposition {
+  id: string;
+  proposition: string;
+  auteur: string | null;
+  auteur_nom: string;
+  contenu: string;
+  created_at: string;
+}
+
+export interface PreuveProposition {
+  id: string;
+  proposition: string;
+  ipfs_hash: string;
+  ipfs_url: string;
+  nom_fichier: string;
+  type_fichier: "image" | "pdf" | "autre";
+  uploaded_at: string;
 }
 
 export interface PropositionCreatePayload {
@@ -543,33 +576,6 @@ export interface PropositionCreatePayload {
   categorie: string;
   budget_demande_fcfa: number;
 }
-
-export const propositionsApi = {
-  list: (filters?: { commune?: number; statut?: string }) => {
-    const params = new URLSearchParams();
-    if (filters?.commune) params.set("commune", String(filters.commune));
-    if (filters?.statut) params.set("statut", filters.statut);
-    const qs = params.toString();
-    return apiFetch<{ results: Proposition[]; count: number }>(
-      `/api/transactions/propositions/${qs ? `?${qs}` : ""}`
-    );
-  },
-  detail: (id: string) =>
-    apiFetch<Proposition>(`/api/transactions/propositions/${id}/`),
-  create: (payload: PropositionCreatePayload) =>
-    apiFetch<Proposition>("/api/transactions/propositions/", {
-      method: "POST",
-      body: JSON.stringify(payload),
-    }),
-  voter: (id: string, type_vote: "SOUTIEN" | "OPPOSITION") =>
-    apiFetch<{ message: string; nb_soutiens: number; nb_oppositions: number; pct_soutien: number; statut: string }>(
-      `/api/transactions/propositions/${id}/voter/`,
-      { method: "POST", body: JSON.stringify({ type_vote }) }
-    ),
-  retirerVote: (id: string) =>
-    apiFetch<{ message: string }>(`/api/transactions/propositions/${id}/voter/`, { method: "DELETE" }),
-};
-
 
 // ─── Phase 2 : Rapports & Notifications ──────────────────────────────────────
 
@@ -628,7 +634,9 @@ export const signalementsApi = {
     apiFetch<Commentaire>(`/api/transactions/signalements/${id}/commentaires/`, { method: "POST", body: JSON.stringify(data) }),
   lancerEnquete: (id: string) =>
     apiFetch<Signalement>(`/api/transactions/signalements/${id}/enquete/lancer/`, { method: "PATCH" }),
-  resoudreEnquete: (id: string, data: { resolution: "FRAUDE" | "FAUX" | "INFONDE"; justification?: string }) =>
+  ajouterNoteEnquete: (id: string, note: string) =>
+    apiFetch<{ message: string }>(`/api/transactions/signalements/${id}/enquete/note/`, { method: "POST", body: JSON.stringify({ note }) }),
+  resoudreEnquete: (id: string, data: { resolution: "FRAUDE" | "FAUX" | "INFONDE"; justification?: string; montant_corrige?: number }) =>
     apiFetch<Signalement>(`/api/transactions/signalements/${id}/enquete/resoudre/`, { method: "PATCH", body: JSON.stringify(data) }),
 };
 
@@ -660,8 +668,40 @@ export const projetsApi = {
     const url = communeId ? `/api/communes/projets/?commune=${communeId}` : "/api/communes/projets/";
     return apiFetch<Projet[]>(url);
   },
-  getDetail: (id: number) => apiFetch<Projet>(`/api/communes/projets/${id}/`),
-  update: (id: number, data: Partial<Projet>) =>
+  getDetail: (id: string | number) => apiFetch<Projet>(`/api/communes/projets/${id}/`),
+  update: (id: string | number, data: Partial<Projet>) =>
     apiFetch<Projet>(`/api/communes/projets/${id}/`, { method: "PATCH", body: JSON.stringify(data) }),
-  delete: (id: number) => apiFetch<void>(`/api/communes/projets/${id}/`, { method: "DELETE" }),
+  delete: (id: string | number) => apiFetch<void>(`/api/communes/projets/${id}/`, { method: "DELETE" }),
+};
+
+export const propositionsApi = {
+  list: (params?: { commune?: number; statut?: string }) => {
+    const search = new URLSearchParams();
+    if (params?.commune) search.set("commune", params.commune.toString());
+    if (params?.statut) search.set("statut", params.statut);
+    return apiFetch<Proposition[]>(`/api/transactions/propositions/?${search.toString()}`);
+  },
+  detail: (id: string) => apiFetch<Proposition>(`/api/transactions/propositions/${id}/`),
+  create: (data: Partial<Proposition>) => 
+    apiFetch<Proposition>("/api/transactions/propositions/", { method: "POST", body: JSON.stringify(data) }),
+  voter: (id: string, type_vote: "SOUTIEN" | "OPPOSITION") =>
+    apiFetch<any>(`/api/transactions/propositions/${id}/voter/`, { method: "POST", body: JSON.stringify({ type_vote }) }),
+  retirerVote: (id: string) =>
+    apiFetch<{ message: string }>(`/api/transactions/propositions/${id}/voter/`, { method: "DELETE" }),
+  
+  // Gouvernance Maire
+  officialiser: (id: string, tx_hash: string) =>
+    apiFetch<{ message: string; statut: string }>(`/api/transactions/propositions/${id}/officialiser/`, { 
+      method: "PATCH", 
+      body: JSON.stringify({ tx_hash }) 
+    }),
+  cloturer: (id: string) =>
+    apiFetch<{ message: string; statut: string }>(`/api/transactions/propositions/${id}/cloturer/`, { method: "PATCH" }),
+  
+  ajouterPreuve: (id: string, data: any) =>
+    apiFetch<any>(`/api/transactions/propositions/${id}/preuves/`, { method: "POST", body: JSON.stringify(data) }),
+  commentaires: (id: string) =>
+    apiFetch<any[]>(`/api/transactions/propositions/${id}/commentaires/`),
+  ajouterCommentaire: (id: string, data: { contenu: string; type_commentaire?: string }) =>
+    apiFetch<any>(`/api/transactions/propositions/${id}/commentaires/`, { method: "POST", body: JSON.stringify(data) }),
 };

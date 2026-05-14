@@ -14,6 +14,7 @@ from .views import (
     ajouter_preuve_signalement,
     CommentaireListCreateView,
     lancer_enquete_signalement,
+    creer_note_enquete,
     resoudre_enquete_signalement,
     PropositionListCreateView,
     PropositionDetailView,
@@ -30,6 +31,10 @@ from .views import (
     ProjetTransactionListView,
     exporter_transactions_csv,
     exporter_signalements_csv,
+    ajouter_preuve_proposition,
+    CommentairePropositionListCreateView,
+    rendre_proposition_officielle,
+    cloturer_vote_officiel,
 )
 
 urlpatterns = [
@@ -63,12 +68,17 @@ urlpatterns = [
     path("signalements/<uuid:pk>/commentaires/", CommentaireListCreateView.as_view(), name="signalements-commentaires"),
     path("signalements/<uuid:pk>/voter/", voter_signalement, name="signalements-voter"),
     path("signalements/<uuid:pk>/enquete/lancer/", lancer_enquete_signalement, name="signalements-enquete-lancer"),
+    path("signalements/<uuid:pk>/enquete/note/", creer_note_enquete, name="signalements-enquete-note"),
     path("signalements/<uuid:pk>/enquete/resoudre/", resoudre_enquete_signalement, name="signalements-enquete-resoudre"),
 
     # ─── Propositions & Votes (H3) ─────────────────────────────────────
     path("propositions/", PropositionListCreateView.as_view(), name="propositions-list-create"),
     path("propositions/<uuid:pk>/", PropositionDetailView.as_view(), name="propositions-detail"),
     path("propositions/<uuid:pk>/voter/", voter_proposition, name="propositions-voter"),
+    path("propositions/<uuid:pk>/preuves/", ajouter_preuve_proposition, name="propositions-preuves"),
+    path("propositions/<uuid:pk>/commentaires/", CommentairePropositionListCreateView.as_view(), name="propositions-commentaires"),
+    path("propositions/<uuid:pk>/officialiser/", rendre_proposition_officielle, name="propositions-officialiser"),
+    path("propositions/<uuid:pk>/cloturer/", cloturer_vote_officiel, name="propositions-cloturer"),
 
     # ─── Notifications (H10) ───────────────────────────────────────────
     path("notifications/", NotificationListView.as_view(), name="notifications-list"),

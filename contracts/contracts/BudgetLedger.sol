@@ -26,6 +26,10 @@ contract BudgetLedger is AccessControl, Pausable {
     // wallet => communeId
     mapping(address => string) public walletCommune;
 
+    // ─── Anti double-validation ───────────────────────────────────────────────
+    // keccak256(depenseId + communeId) => déjà validée
+    mapping(bytes32 => bool) private _depensesValidees;
+
     // ─── Compteur global de transactions ──────────────────────────────────────
     uint256 private _transactionCount;
 
@@ -113,6 +117,50 @@ contract BudgetLedger is AccessControl, Pausable {
         uint256 timestamp
     );
 
+    /**
+     * @notice Émis quand le Maire transforme une idée citoyenne en engagement officiel (Budget Participatif)
+     */
+    event PropositionOfficialisee(
+        string indexed propositionId,
+        string indexed communeId,
+        string ipfsHash,
+        address indexed parMaire,
+        uint256 timestamp
+    );
+
+    /**
+     * @notice Émis lors de la clôture du vote citoyen pour prouver le résultat de manière immuable
+     */
+    event PropositionCloturee(
+        string indexed propositionId,
+        string indexed communeId,
+        bool approuvee,
+        uint256 nbVotesSoutien,
+        uint256 nbVotesOpposition,
+        uint256 timestamp
+    );
+
+    /**
+     * @notice Émis quand la DGDDL lance officiellement une enquête sur un signalement citoyen
+     */
+    event EnqueteLancee(
+        string indexed signalementId,
+        string indexed communeId,
+        address indexed parDGDDL,
+        uint256 timestamp
+    );
+
+    /**
+     * @notice Émis quand la DGDDL clôture une enquête avec un verdict final
+     */
+    event EnqueteResolue(
+        string indexed signalementId,
+        string indexed communeId,
+        string resolution, // FRAUDE, FAUX, INFONDE
+        address indexed parDGDDL,
+        uint256 timestamp
+    );
+
 
     /**
      * @notice Émis quand un nouveau rôle Agent est attribué à une adresse
@@ -123,6 +171,11 @@ contract BudgetLedger is AccessControl, Pausable {
      * @notice Émis quand un nouveau rôle Maire est attribué à une adresse
      */
     event MaireRoleAttribue(address indexed wallet, address indexed parAdmin, uint256 timestamp);
+
+    /**
+     * @notice Émis quand un rôle est révoqué d'un wallet
+     */
+    event RoleRevoque(bytes32 indexed role, address indexed wallet, address indexed parAdmin, uint256 timestamp);
 
     // ─── Constructeur ──────────────────────────────────────────────────────────
 
@@ -149,12 +202,14 @@ contract BudgetLedger is AccessControl, Pausable {
     ) external whenNotPaused onlyRole(AGENT_ROLE) {
         require(bytes(depenseId).length > 0, "BudgetLedger: depenseId vide");
         require(bytes(communeId).length > 0, "BudgetLedger: communeId vide");
-        
-        // S8 : Vérification du scope commune
-        require(
-            keccak256(bytes(walletCommune[msg.sender])) == keccak256(bytes(communeId)),
-            "BudgetLedger: cet agent n'est pas autorise pour cette commune"
-        );
+
+        // L'admin DGDDL peut agir pour toutes les communes (mode custodial MVP)
+        if (!hasRole(DEFAULT_ADMIN_ROLE, msg.sender)) {
+            require(
+                keccak256(bytes(walletCommune[msg.sender])) == keccak256(bytes(communeId)),
+                "BudgetLedger: cet agent n'est pas autorise pour cette commune"
+            );
+        }
 
         require(montant > 0, "BudgetLedger: montant doit etre positif");
         require(bytes(categorie).length > 0, "BudgetLedger: categorie vide");
@@ -189,15 +244,20 @@ contract BudgetLedger is AccessControl, Pausable {
         require(bytes(depenseId).length > 0, "BudgetLedger: depenseId vide");
         require(bytes(communeId).length > 0, "BudgetLedger: communeId vide");
 
-        // S8 : Vérification du scope commune
-        require(
-            keccak256(bytes(walletCommune[msg.sender])) == keccak256(bytes(communeId)),
-            "BudgetLedger: ce maire n'est pas autorise pour cette commune"
-        );
+        if (!hasRole(DEFAULT_ADMIN_ROLE, msg.sender)) {
+            require(
+                keccak256(bytes(walletCommune[msg.sender])) == keccak256(bytes(communeId)),
+                "BudgetLedger: ce maire n'est pas autorise pour cette commune"
+            );
+        }
 
         require(montant > 0, "BudgetLedger: montant doit etre positif");
         require(bytes(categorie).length > 0, "BudgetLedger: categorie vide");
         require(bytes(ipfsHash).length > 0, "BudgetLedger: ipfsHash vide");
+
+        bytes32 key = keccak256(abi.encodePacked(depenseId, communeId));
+        require(!_depensesValidees[key], "BudgetLedger: depense deja validee");
+        _depensesValidees[key] = true;
 
         emit DepenseValidee(
             depenseId,
@@ -222,11 +282,13 @@ contract BudgetLedger is AccessControl, Pausable {
     ) external whenNotPaused onlyRole(AGENT_ROLE) {
         require(bytes(recetteId).length > 0, "BudgetLedger: recetteId vide");
         require(bytes(communeId).length > 0, "BudgetLedger: communeId vide");
-        
-        require(
-            keccak256(bytes(walletCommune[msg.sender])) == keccak256(bytes(communeId)),
-            "BudgetLedger: cet agent n'est pas autorise pour cette commune"
-        );
+
+        if (!hasRole(DEFAULT_ADMIN_ROLE, msg.sender)) {
+            require(
+                keccak256(bytes(walletCommune[msg.sender])) == keccak256(bytes(communeId)),
+                "BudgetLedger: cet agent n'est pas autorise pour cette commune"
+            );
+        }
 
         require(montant > 0, "BudgetLedger: montant doit etre positif");
         require(bytes(source).length > 0, "BudgetLedger: source vide");
@@ -256,11 +318,12 @@ contract BudgetLedger is AccessControl, Pausable {
         require(bytes(recetteId).length > 0, "BudgetLedger: recetteId vide");
         require(bytes(communeId).length > 0, "BudgetLedger: communeId vide");
 
-        // S8 : Vérification du scope commune
-        require(
-            keccak256(bytes(walletCommune[msg.sender])) == keccak256(bytes(communeId)),
-            "BudgetLedger: ce maire n'est pas autorise pour cette commune"
-        );
+        if (!hasRole(DEFAULT_ADMIN_ROLE, msg.sender)) {
+            require(
+                keccak256(bytes(walletCommune[msg.sender])) == keccak256(bytes(communeId)),
+                "BudgetLedger: ce maire n'est pas autorise pour cette commune"
+            );
+        }
 
         require(montant > 0, "BudgetLedger: montant doit etre positif");
         require(bytes(source).length > 0, "BudgetLedger: source vide");
@@ -271,6 +334,102 @@ contract BudgetLedger is AccessControl, Pausable {
             montant,
             source,
             ipfsHash,
+            msg.sender,
+            block.timestamp
+        );
+    }
+
+    // ─── Budget Participatif & Gouvernance ────────────────────────────────────
+
+    /**
+     * @notice Le Maire engage officiellement la commune sur une proposition citoyenne
+     */
+    function officialiserProposition(
+        string calldata propositionId,
+        string calldata communeId,
+        string calldata ipfsHash
+    ) external whenNotPaused onlyRole(MAIRE_ROLE) {
+        require(bytes(propositionId).length > 0, "BudgetLedger: propositionId vide");
+        require(bytes(communeId).length > 0, "BudgetLedger: communeId vide");
+
+        if (!hasRole(DEFAULT_ADMIN_ROLE, msg.sender)) {
+            require(
+                keccak256(bytes(walletCommune[msg.sender])) == keccak256(bytes(communeId)),
+                "BudgetLedger: ce maire n'est pas autorise pour cette commune"
+            );
+        }
+
+        emit PropositionOfficialisee(
+            propositionId,
+            communeId,
+            ipfsHash,
+            msg.sender,
+            block.timestamp
+        );
+    }
+
+    /**
+     * @notice Enregistre le résultat final du vote souverain du peuple sur blockchain
+     */
+    function cloturerProposition(
+        string calldata propositionId,
+        string calldata communeId,
+        bool approuvee,
+        uint256 nbVotesSoutien,
+        uint256 nbVotesOpposition
+    ) external whenNotPaused onlyRole(MAIRE_ROLE) {
+        require(bytes(propositionId).length > 0, "BudgetLedger: propositionId vide");
+
+        if (!hasRole(DEFAULT_ADMIN_ROLE, msg.sender)) {
+            require(
+                keccak256(bytes(walletCommune[msg.sender])) == keccak256(bytes(communeId)),
+                "BudgetLedger: pas autorise"
+            );
+        }
+
+        emit PropositionCloturee(
+            propositionId,
+            communeId,
+            approuvee,
+            nbVotesSoutien,
+            nbVotesOpposition,
+            block.timestamp
+        );
+    }
+
+    // ─── Enquêtes & Audit DGDDL ───────────────────────────────────────────────
+
+    /**
+     * @notice La DGDDL ancre le lancement d'une enquête officielle sur blockchain
+     */
+    function lancerEnquete(
+        string calldata signalementId,
+        string calldata communeId
+    ) external whenNotPaused onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(bytes(signalementId).length > 0, "BudgetLedger: signalementId vide");
+        
+        emit EnqueteLancee(
+            signalementId,
+            communeId,
+            msg.sender,
+            block.timestamp
+        );
+    }
+
+    /**
+     * @notice La DGDDL ancre le verdict final de l'enquête (immuable)
+     */
+    function resoudreEnquete(
+        string calldata signalementId,
+        string calldata communeId,
+        string calldata resolution
+    ) external whenNotPaused onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(bytes(signalementId).length > 0, "BudgetLedger: signalementId vide");
+        
+        emit EnqueteResolue(
+            signalementId,
+            communeId,
+            resolution,
             msg.sender,
             block.timestamp
         );
@@ -313,6 +472,8 @@ contract BudgetLedger is AccessControl, Pausable {
      */
     function revoquerRole(bytes32 role, address wallet) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _revokeRole(role, wallet);
+        delete walletCommune[wallet];
+        emit RoleRevoque(role, wallet, msg.sender, block.timestamp);
     }
 
     /**

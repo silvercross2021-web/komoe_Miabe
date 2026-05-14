@@ -13,6 +13,8 @@ class TransactionStatut(models.TextChoices):
     SOUMIS = "SOUMIS", "Soumis (en attente de validation)"
     VALIDE = "VALIDE", "Validé sur blockchain"
     REJETE = "REJETE", "Rejeté"
+    FRAUDULEUSE = "FRAUDULEUSE", "🚨 Fraude confirmée"
+    CORRIGEE = "CORRIGEE", "✅ Corrigée (Audit)"
 
 
 class CategorieDepense(models.TextChoices):
@@ -64,9 +66,19 @@ class Transaction(models.Model):
     # Blockchain
     blockchain_tx_hash_soumission = models.CharField(max_length=100, blank=True, default="")
     blockchain_tx_hash_validation = models.CharField(max_length=100, blank=True, default="")
-    blockchain_synced_at = models.DateTimeField(null=True, blank=True)
+    # Invalidation / Audit
+    parent_frauduleux = models.ForeignKey(
+        "self",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="corrections",
+        help_text="Transaction originale qui a été invalidée par celle-ci"
+    )
+    is_correction = models.BooleanField(default=False)
+    correction_justification = models.TextField(blank=True, default="")
 
-    # Acteurs
+    # Timestamps
     soumis_par = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -100,7 +112,9 @@ class Transaction(models.Model):
 
 class Signalement(models.Model):
     STATUT_CHOICES = [
+        ("NOUVEAU", "🆕 Nouveau"),
         ("ACTIF", "🔵 Actif - En vote"),
+        ("VIRAL", "🔥 Viral - Alerte DGDDL"),
         ("ENQUETE_DGDDL", "🟠 Enquête DGDDL"),
         ("VALIDE_FRAUDE", "🔴 Fraude confirmée"),
         ("REJETE_FAUX", "⚪ Signalement faux"),
@@ -138,7 +152,7 @@ class Signalement(models.Model):
     )
 
     # ─── NOUVEAUX CHAMPS ─────────────────────────────────────
-    statut = models.CharField(max_length=20, choices=STATUT_CHOICES, default="ACTIF")
+    statut = models.CharField(max_length=20, choices=STATUT_CHOICES, default="NOUVEAU")
     is_prioritaire = models.BooleanField(default=False, help_text="≥4 votes = prioritaire")
     is_reviewed = models.BooleanField(default=False)
 
@@ -161,6 +175,10 @@ class Signalement(models.Model):
         related_name="resolutions_dgddl"
     )
     resolution_a = models.DateTimeField(null=True, blank=True)
+
+    # Preuves Blockchain (H6/H8)
+    blockchain_tx_hash_enquete = models.CharField(max_length=100, blank=True, default="")
+    blockchain_tx_hash_resolution = models.CharField(max_length=100, blank=True, default="")
     # ───────────────────────────────────────────────────────────
 
     created_by_profession = models.CharField(
@@ -239,11 +257,12 @@ class PreuveSignalement(models.Model):
 # ─── H3 : Vote citoyen sur les priorités de dépenses ─────────────────────────
 
 class PropositionStatut(models.TextChoices):
-    ACTIVE = "ACTIVE", "Active (en cours de vote)"
-    VALIDEE = "VALIDEE", "Validée communautairement"
+    SUGGESTION = "SUGGESTION", "Suggestion Citoyenne"
+    OFFICIELLE = "OFFICIELLE", "Officielle (Engagement Maire)"
+    APPROUVEE = "APPROUVEE", "Approuvée (Budget Adopté)"
     REJETEE = "REJETEE", "Rejetée"
     EXPIREE = "EXPIREE", "Expirée"
-    CONVERTIE = "CONVERTIE", "Convertie en transaction"
+    CONVERTIE = "CONVERTIE", "Convertie en Projet"
 
 
 class PropositionDepense(models.Model):
@@ -267,8 +286,17 @@ class PropositionDepense(models.Model):
     statut = models.CharField(
         max_length=20,
         choices=PropositionStatut.choices,
-        default=PropositionStatut.ACTIVE,
+        default=PropositionStatut.SUGGESTION,
     )
+    
+    # ─── NOUVEAUX CHAMPS GOUVERNANCE ──────────────────────────
+    is_official = models.BooleanField(default=False, help_text="Validé par le Maire pour vote décisionnel")
+    maire_signature_hash = models.CharField(max_length=100, blank=True, default="", help_text="Preuve blockchain engagement Maire")
+    resultat_vote_hash = models.CharField(max_length=100, blank=True, default="", help_text="Preuve blockchain résultat final")
+    date_passage_officiel = models.DateTimeField(null=True, blank=True)
+    deadline_vote_officiel = models.DateTimeField(null=True, blank=True)
+    # ───────────────────────────────────────────────────────────
+
     deadline_vote = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -430,6 +458,62 @@ class RapportPDF(models.Model):
         ordering = ["-created_at"]
 
 
+# ─── COMMENTAIRES SUR PROPOSITION ─────────────────────────────────────
+
+class CommentaireProposition(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    proposition = models.ForeignKey(
+        PropositionDepense,
+        on_delete=models.CASCADE,
+        related_name="commentaires"
+    )
+    auteur = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="commentaires_propositions"
+    )
+    contenu = models.TextField()
+    type_commentaire = models.CharField(
+        max_length=20, 
+        choices=[("AVIS", "Avis Citoyen"), ("NOTE_TECHNIQUE", "Note Technique Agent/Maire")],
+        default="AVIS"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "commentaires_propositions"
+        ordering = ["created_at"]
+
+    def __str__(self):
+        auteur_nom = self.auteur.full_name if self.auteur else "Utilisateur supprimé"
+        return f"{auteur_nom} sur {self.proposition.titre}"
+
+
+# ─── PREUVES SUR PROPOSITION ──────────────────────────────────────────
+
+class PreuveProposition(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    proposition = models.ForeignKey(
+        PropositionDepense,
+        on_delete=models.CASCADE,
+        related_name="preuves",
+    )
+    ipfs_hash = models.CharField(max_length=100)
+    ipfs_url = models.URLField()
+    nom_fichier = models.CharField(max_length=255, blank=True, default="")
+    type_fichier = models.CharField(
+        max_length=10,
+        choices=[("image", "Image"), ("pdf", "PDF"), ("autre", "Autre")],
+        default="image",
+    )
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "preuves_propositions"
+        ordering = ["uploaded_at"]
+
+
 # ─── COMMENTAIRES SUR SIGNALEMENT ─────────────────────────────────────
 
 class CommentaireSignalement(models.Model):
@@ -469,6 +553,7 @@ class CommentaireSignalement(models.Model):
 class ActionDGDDL(models.Model):
     ACTION_CHOICES = [
         ("ENQUETE_LANCEE", "🚨 Enquête lancée"),
+        ("NOTE_ENQUETE", "📝 Note d'investigation"),
         ("EVIDENCE_ADDED", "📎 Preuve ajoutée"),
         ("MAIRE_NOTIFIE", "📢 Maire notifié"),
         ("RESOLUTION", "⚖️ Décision prise"),
@@ -495,3 +580,48 @@ class ActionDGDDL(models.Model):
 
     def __str__(self):
         return f"{self.action_type} — {self.signalement.sujet}"
+# ─── INTERACTION SUR PROJETS OFFICIELS ────────────────────────────────
+
+class VoteProjet(models.Model):
+    """Like/Soutien sur un projet en cours de réalisation."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    projet = models.ForeignKey(
+        "communes.Projet",
+        on_delete=models.CASCADE,
+        related_name="votes"
+    )
+    citoyen = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="votes_projets"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "votes_projets"
+        unique_together = [("projet", "citoyen")]
+
+class CommentaireProjet(models.Model):
+    """Discussions et retours terrain sur un projet officiel."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    projet = models.ForeignKey(
+        "communes.Projet",
+        on_delete=models.CASCADE,
+        related_name="commentaires"
+    )
+    auteur = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="commentaires_projets"
+    )
+    contenu = models.TextField()
+    # Permet de joindre une photo du chantier par exemple
+    ipfs_hash = models.CharField(max_length=100, blank=True, default="")
+    ipfs_url = models.URLField(blank=True, default="")
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "commentaires_projets"
+        ordering = ["-created_at"]

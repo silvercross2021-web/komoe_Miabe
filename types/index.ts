@@ -131,3 +131,50 @@ export interface PolygonNetwork {
   explorerUrl: string;     // https://amoy.polygonscan.com
   currency: string;        // 'MATIC'
 }
+// ── Projets & Budget Participatif ──────────────────────────────────────────
+
+export type PropositionStatut = 
+  | 'SUGGESTION' 
+  | 'OFFICIELLE' 
+  | 'APPROUVEE' 
+  | 'REJETEE' 
+  | 'EXPIREE' 
+  | 'CONVERTIE';
+
+export interface Proposition {
+  id: string;
+  commune: number;
+  commune_nom: string;
+  titre: string;
+  description: string;
+  budget_demande_fcfa: number;
+  statut: PropositionStatut;
+  is_official: boolean;
+  soumis_par_nom: string;
+  nb_soutiens: number;
+  nb_oppositions: number;
+  pct_soutien: number;
+  maire_signature_hash?: string;
+  resultat_vote_hash?: string;
+  deadline_vote_officiel?: string;
+  created_at: string;
+}
+
+export type ProjetStatut = 'EN_ATTENTE' | 'EN_COURS' | 'ACHEVE' | 'ANNULE' | 'SOUS_ENQUETE';
+
+export interface Projet {
+  id: string;
+  commune: number;
+  commune_nom: string;
+  nom: string;
+  description: string;
+  budget_alloue_fcfa: number;
+  budget_consomme_fcfa: number;
+  taux_execution: number; // Physique (0-100)
+  statut: ProjetStatut;
+  bailleur_nom?: string;
+  parent_proposition_id?: string;
+  blockchain_audit_hash?: string;
+  created_at: string;
+  updated_at: string;
+}

@@ -8,7 +8,7 @@ from rest_framework.response import Response
 from rest_framework.exceptions import PermissionDenied
 from .models import Transaction, TransactionStatut, Signalement, VoteSignalement, CommentaireSignalement, ActionDGDDL
 from .serializers import TransactionSerializer, TransactionCreateSerializer, SignalementSerializer, CommentaireSerializer, ActionDGDDLSerializer
-from ..users.permissions import IsAgentFinancier, IsMaire, IsAgentOrMaire
+from ..users.permissions import IsAgentFinancier, IsMaire, IsAgentOrMaire, IsVerifiedUser
 from ..users.models import User
 from ..blockchain.service import BlockchainService
 from .utils import formatFCFA
@@ -21,7 +21,9 @@ class TransactionListView(generics.ListAPIView):
     permission_classes = [AllowAny]
 
     def get_queryset(self):
-        qs = Transaction.objects.filter(statut=TransactionStatut.VALIDE).select_related(
+        # On affiche les transactions validées ET les corrections d'audit
+        allowed_statuts = [TransactionStatut.VALIDE, TransactionStatut.CORRIGEE]
+        qs = Transaction.objects.filter(statut__in=allowed_statuts).select_related(
             "commune", "soumis_par", "valide_par"
         )
         commune_id = self.request.query_params.get("commune")
@@ -65,11 +67,11 @@ class TransactionCommuneListView(generics.ListAPIView):
                 # Le maire voit tout SAUF les brouillons
                 qs = qs.exclude(statut=TransactionStatut.BROUILLON)
             else:
-                # Autres utilisateurs : uniquement validé
-                qs = qs.filter(statut=TransactionStatut.VALIDE)
+                # Autres utilisateurs : uniquement validé et corrigé
+                qs = qs.filter(statut__in=[TransactionStatut.VALIDE, TransactionStatut.CORRIGEE])
         else:
-            # Public : uniquement validé
-            qs = qs.filter(statut=TransactionStatut.VALIDE)
+            # Public : uniquement validé et corrigé
+            qs = qs.filter(statut__in=[TransactionStatut.VALIDE, TransactionStatut.CORRIGEE])
 
         # Filtres optionnels
         statut = self.request.query_params.get("statut")
@@ -266,6 +268,22 @@ def valider_transaction(request, pk):
     transaction.validated_at = timezone.now()
     transaction.save()
 
+    # ─── MISE À JOUR BUDGET PROJET (Algorithme de Consommation) ───────
+    if transaction.projet and transaction.type == "DEPENSE":
+        from django.db.models import Sum
+        from .models import TransactionStatut, TransactionType
+        
+        # Recalcul précis de toutes les dépenses validées pour ce projet
+        total_projet = Transaction.objects.filter(
+            projet=transaction.projet,
+            statut__in=[TransactionStatut.VALIDE, TransactionStatut.CORRIGEE],
+            type=TransactionType.DEPENSE
+        ).aggregate(total=Sum('montant_fcfa'))['total'] or 0
+        
+        transaction.projet.budget_consomme_fcfa = total_projet
+        transaction.projet.save(update_fields=["budget_consomme_fcfa"])
+    # ──────────────────────────────────────────────────────────────────
+
     # H10 : Notifier le Bailleur si la transaction est liée à un projet
     if transaction.projet and transaction.projet.bailleur:
         from .notifications import notify_user
@@ -417,7 +435,7 @@ class SignalementListCreateView(generics.ListCreateAPIView):
 
     def get_permissions(self):
         if self.request.method == "POST":
-            return [IsAuthenticated()]
+            return [IsVerifiedUser()]
         return [AllowAny()]
 
     def perform_create(self, serializer):
@@ -439,10 +457,15 @@ class SignalementListCreateView(generics.ListCreateAPIView):
 
 
 class SignalementDetailView(generics.RetrieveUpdateAPIView):
-    """MAIRE ou DGDDL : Marquer un signalement comme traité."""
+    """MAIRE ou DGDDL : Marquer un signalement comme traité. Public en lecture."""
     from .serializers import SignalementSerializer
     serializer_class = SignalementSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
+
+    def get_permissions(self):
+        if self.request.method in ["PUT", "PATCH"]:
+            return [IsAuthenticated()]
+        return [AllowAny()]
 
     def get_queryset(self):
         from .models import Signalement
@@ -463,7 +486,7 @@ class SignalementDetailView(generics.RetrieveUpdateAPIView):
 # ─── H1 : Upload de preuves pour un signalement ──────────────────────────────
 
 @api_view(["POST"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsVerifiedUser])
 def ajouter_preuve_signalement(request, pk):
     """
     Ajoute une preuve IPFS à un signalement existant.
@@ -515,7 +538,7 @@ class PropositionListCreateView(generics.ListCreateAPIView):
 
     def get_permissions(self):
         if self.request.method == "POST":
-            return [IsAuthenticated()]
+            return [IsVerifiedUser()]
         return [AllowAny()]
 
 
@@ -529,7 +552,7 @@ class PropositionDetailView(generics.RetrieveAPIView):
 
 
 @api_view(["POST", "DELETE"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsVerifiedUser])
 def voter_proposition(request, pk):
     """
     POST   → Soumettre ou changer son vote (SOUTIEN / OPPOSITION)
@@ -543,8 +566,17 @@ def voter_proposition(request, pk):
     except PropositionDepense.DoesNotExist:
         return Response({"error": "Proposition introuvable."}, status=404)
 
-    if proposition.statut != "ACTIVE":
-        return Response({"error": "Cette proposition n'est plus ouverte au vote."}, status=400)
+    if proposition.statut not in ["SUGGESTION", "OFFICIELLE"]:
+        return Response({"error": "Cette proposition n'est plus ouverte au vote (Clôturée ou archivée)."}, status=400)
+
+    # ─── SÉCURITÉ : Vote restreint à la commune et deadline ───────
+    if request.user.commune != proposition.commune:
+        return Response({"error": "Vous ne pouvez voter que pour les propositions de votre propre commune."}, status=403)
+    
+    if proposition.statut == "OFFICIELLE" and proposition.deadline_vote_officiel:
+        if timezone.now() > proposition.deadline_vote_officiel:
+            return Response({"error": "Le vote officiel pour cette proposition est expiré."}, status=400)
+    # ──────────────────────────────────────────────────────────────
 
     if request.method == "DELETE":
         deleted, _ = VoteProposition.objects.filter(proposition=proposition, citoyen=request.user).delete()
@@ -568,38 +600,142 @@ def voter_proposition(request, pk):
         request.user.reputation_score = (request.user.reputation_score or 0) + 2
         request.user.save(update_fields=["reputation_score"])
 
-    # Vérifier seuil : >60% soutien ET >50 votes → passer en VALIDEE
-    total_votes = proposition.votes.count()
-    if total_votes >= 50 and proposition.pct_soutien >= 60:
-        proposition.statut = "VALIDEE"
-        proposition.save(update_fields=["statut"])
-        # H5 : +30 points pour le soumetteur si sa proposition est validée
-        if proposition.soumis_par:
-            proposition.soumis_par.reputation_score = (proposition.soumis_par.reputation_score or 0) + 30
-            proposition.soumis_par.save(update_fields=["reputation_score"])
-            
-            # H10 : Notifier le soumetteur
-            from .notifications import notify_user
-            notify_user(
-                user=proposition.soumis_par,
-                titre="Proposition Validée ! 🎉",
-                message=f"Félicitations ! Votre proposition '{proposition.titre[:30]}' a été validée par la communauté (>60% de soutien).",
-                type_notif="VOTE"
-            )
+    # Note: On laisse les citoyens voter librement. 
+    # La transition vers APPROUVEE est maintenant gérée par le Maire via cloturer_vote_officiel.
 
     return Response({
         "message": "Vote enregistré.",
         "nb_soutiens": proposition.nb_soutiens,
         "nb_oppositions": proposition.nb_oppositions,
         "pct_soutien": proposition.pct_soutien,
-        "statut": proposition.statut,
+        "statut": proposition.statut
+    })
+
+
+# ─── GOUVERNANCE MAIRE : OFFICIALISER & CLOTURER ──────────────────────────────
+
+@api_view(["PATCH"])
+@permission_classes([IsAuthenticated])
+def rendre_proposition_officielle(request, pk):
+    """Maire : Engage sa signature blockchain sur une proposition citoyenne."""
+    from .models import PropositionDepense
+    from django.utils import timezone
+    from datetime import timedelta
+
+    if request.user.role != "MAIRE":
+        return Response({"error": "Seul le Maire peut officialiser une proposition"}, status=403)
+    
+    try:
+        proposition = PropositionDepense.objects.get(pk=pk)
+    except PropositionDepense.DoesNotExist:
+        return Response({"error": "Proposition introuvable"}, status=404)
+
+    if proposition.statut != "SUGGESTION":
+        return Response({"error": "Cette proposition est déjà officielle ou traitée"}, status=400)
+    
+    tx_hash = request.data.get("tx_hash")
+    if not tx_hash:
+        return Response({"error": "Preuve blockchain (hash) manquante"}, status=400)
+
+    proposition.is_official = True
+    proposition.statut = "OFFICIELLE"
+    proposition.maire_signature_hash = tx_hash
+    proposition.date_passage_officiel = timezone.now()
+    # Période de vote officielle de 30 jours par défaut
+    proposition.deadline_vote_officiel = timezone.now() + timedelta(days=30)
+    proposition.save()
+
+    return Response({
+        "message": "Proposition officialisée sur la blockchain. Le vote décisionnel est ouvert.",
+        "statut": proposition.statut
+    })
+
+
+@api_view(["PATCH"])
+@permission_classes([IsAuthenticated])
+def cloturer_vote_officiel(request, pk):
+    """Maire : Clôture le vote et transforme en projet réel si approuvé."""
+    from .models import PropositionDepense
+    from ..communes.models import Projet
+    from .notifications import notify_user
+
+    if request.user.role != "MAIRE":
+        return Response({"error": "Seul le Maire peut clôturer le vote"}, status=403)
+
+    try:
+        proposition = PropositionDepense.objects.get(pk=pk)
+    except PropositionDepense.DoesNotExist:
+        return Response({"error": "Proposition introuvable"}, status=404)
+
+    if proposition.statut != "OFFICIELLE":
+        return Response({"error": "Cette proposition n'est pas en phase de vote décisionnel"}, status=400)
+    
+    # ─── ANCRAGE BLOCKCHAIN DU RÉSULTAT (Transparence Totale) ─────
+    from ..blockchain.service import BlockchainService
+    blockchain = BlockchainService()
+    res_hash = None
+    
+    if blockchain.is_configured():
+        try:
+            res_hash = blockchain.cloturer_proposition(
+                proposition_id=str(proposition.id),
+                commune_id=str(proposition.commune_id),
+                approuvee=(proposition.pct_soutien >= 50),
+                soutien=proposition.nb_soutiens,
+                opposition=proposition.nb_oppositions
+            )
+            proposition.resultat_vote_hash = res_hash
+        except Exception as e:
+            # On log l'erreur mais on continue pour ne pas bloquer le workflow si la blockchain est lente
+            print(f"Erreur ancrage blockchain résultat: {str(e)}")
+    # ──────────────────────────────────────────────────────────────
+    
+    # Logique de succès : >50% soutien (Majorité simple)
+    if proposition.pct_soutien >= 50:
+        proposition.statut = "APPROUVEE"
+        
+        # Création automatique du Projet dans le module Communes (H11)
+        projet = Projet.objects.create(
+            commune=proposition.commune,
+            nom=proposition.titre,
+            description=proposition.description,
+            budget_alloue_fcfa=proposition.budget_demande_fcfa,
+            parent_proposition=proposition,
+            statut="EN_ATTENTE" # Sera activé par l'Agent Financier
+        )
+        
+        # Récompense Substantielle pour le Porteur d'idée (+100 pts)
+        if proposition.soumis_par:
+            proposition.soumis_par.reputation_score = (proposition.soumis_par.reputation_score or 0) + 100
+            proposition.soumis_par.save(update_fields=["reputation_score"])
+            notify_user(
+                proposition.soumis_par,
+                "🏛️ Budget Adopté !",
+                f"Félicitations ! Votre idée a été adoptée officiellement. Projet créé : {projet.nom}.",
+                "PROPOSITION"
+            )
+    else:
+        proposition.statut = "REJETEE"
+        if proposition.soumis_par:
+            notify_user(
+                proposition.soumis_par,
+                "❌ Projet Rejeté",
+                f"Le vote citoyen n'a pas atteint la majorité pour votre proposition '{proposition.titre[:30]}'.",
+                "PROPOSITION"
+            )
+
+    proposition.save()
+
+    return Response({
+        "message": f"Vote clôturé. Résultat : {proposition.statut}",
+        "statut": proposition.statut
     })
 
 
 # ─── H4/H6 : Vote sur Signalement & Alerte Virale ────────────────────────────
 
 @api_view(["POST"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsVerifiedUser])
 def voter_signalement(request, pk):
     """Citoyen : Vote sur la crédibilité d'un signalement."""
     from .models import Signalement, VoteSignalement
@@ -628,17 +764,25 @@ def voter_signalement(request, pk):
     nb_credibles = votes.filter(verdict="CREDIBLE").count()
     pct_credible = (nb_credibles / nb_votes) * 100 if nb_votes > 0 else 0
 
+    if nb_votes >= 4: # Seuil bas pour priorité visuelle
+        signalement.is_prioritaire = True
+        
     if nb_votes >= 20 and pct_credible >= 70:
+        if signalement.statut == "NOUVEAU":
+            signalement.statut = "VIRAL"
+        
         # Notifier la DGDDL (H6)
         from .notifications import notify_user
-        dgddls = User.objects.filter(role="DGDDL") # DGDDL
+        dgddls = User.objects.filter(role="DGDDL")
         for dg in dgddls:
             notify_user(
                 user=dg,
-                titre="⚠️ SIGNALEMENT VIRAL !",
-                message=f"L'incident '{signalement.sujet}' à {signalement.commune.nom} est jugé crédible par {nb_credibles} citoyens.",
+                titre="🔥 SIGNALEMENT VIRAL !",
+                message=f"L'incident '{signalement.sujet}' est jugé crédible par {nb_credibles} citoyens. Intervention DGDDL recommandée.",
                 type_notif="SIGNALEMENT"
             )
+    
+    signalement.save()
 
     return Response({
         "message": "Merci pour votre contribution citoyenne.",
@@ -664,7 +808,7 @@ class CommentaireListCreateView(generics.ListCreateAPIView):
 
     def get_permissions(self):
         if self.request.method == "POST":
-            return [IsAuthenticated()]
+            return [IsVerifiedUser()]
         return [AllowAny()]
 
     def perform_create(self, serializer):
@@ -718,6 +862,21 @@ def lancer_enquete_signalement(request, pk):
     signalement.statut = "ENQUETE_DGDDL"
     signalement.enquete_lancee_par = request.user
     signalement.enquete_lancee_a = timezone.now()
+    
+    # ─── ANCRAGE BLOCKCHAIN (LANCEMENT ENQUÊTE) ───────────────────────
+    from ..blockchain.service import BlockchainService
+    blockchain = BlockchainService()
+    if blockchain.is_configured():
+        try:
+            tx_hash = blockchain.lancer_enquete(
+                signalement_id=str(signalement.id),
+                commune_id=str(signalement.commune_id)
+            )
+            signalement.blockchain_tx_hash_enquete = tx_hash
+        except Exception as e:
+            print(f"Erreur blockchain lancement enquête: {str(e)}")
+    # ──────────────────────────────────────────────────────────────────
+    
     signalement.save()
 
     # Créer action d'audit
@@ -742,6 +901,32 @@ def lancer_enquete_signalement(request, pk):
         "message": "Enquête lancée",
         "signalement": SignalementSerializer(signalement).data
     })
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def creer_note_enquete(request, pk):
+    """DGDDL ajoute une note d'investigation au Timeline."""
+    from .models import Signalement, ActionDGDDL
+    if request.user.role != "DGDDL":
+        return Response({"error": "Seule DGDDL peut ajouter des notes d'enquête"}, status=403)
+        
+    try:
+        signalement = Signalement.objects.get(pk=pk)
+    except Signalement.DoesNotExist:
+        return Response({"error": "Signalement introuvable"}, status=404)
+    
+    note = request.data.get("note")
+    if not note:
+        return Response({"error": "La note est requise"}, status=400)
+        
+    ActionDGDDL.objects.create(
+        signalement=signalement,
+        action_type="NOTE_ENQUETE",
+        description=note,
+        effectuee_par=request.user
+    )
+    return Response({"message": "Note d'enquête ajoutée"})
 
 
 # ─── RÉSOUDRE ENQUÊTE (DGDDL ONLY) ───────────────────────────────────────────
@@ -771,9 +956,61 @@ def resoudre_enquete_signalement(request, pk):
 
     justification = request.data.get("justification", "")
 
+    # Mémoriser la résolution sur le signalement
+    signalement.resolution = resolution
+    signalement.resolution_justification = justification
+    signalement.resolution_a = timezone.now()
+
+    # ─── ANCRAGE BLOCKCHAIN (RÉSOLUTION ENQUÊTE) ──────────────────────
+    from ..blockchain.service import BlockchainService
+    blockchain = BlockchainService()
+    if blockchain.is_configured():
+        try:
+            tx_hash = blockchain.resoudre_enquete(
+                signalement_id=str(signalement.id),
+                commune_id=str(signalement.commune_id),
+                resolution=resolution
+            )
+            signalement.blockchain_tx_hash_resolution = tx_hash
+        except Exception as e:
+            print(f"Erreur blockchain résolution enquête: {str(e)}")
+    # ──────────────────────────────────────────────────────────────────
+
     # Appliquer la résolution
     if resolution == "FRAUDE":
         signalement.statut = "VALIDE_FRAUDE"
+        
+        # 🚨 Invalider la transaction liée si elle existe
+        if signalement.transaction:
+            from .models import Transaction
+            tx = signalement.transaction
+            tx.statut = "FRAUDULEUSE"
+            tx.save()
+            
+            # Créer une transaction de correction si montant fourni
+            montant_raw = request.data.get("montant_corrige")
+            if montant_raw is not None:
+                try:
+                    montant_corrige = int(montant_raw)
+                    Transaction.objects.create(
+                        commune=tx.commune,
+                        type=tx.type,
+                        statut="CORRIGEE",
+                        montant_fcfa=montant_corrige,
+                        categorie=tx.categorie,
+                        description=f"✅ CORRECTION AUDIT - Signalement #{str(signalement.id)[:8]}",
+                        parent_frauduleux=tx,
+                        is_correction=True,
+                        correction_justification=justification,
+                        soumis_par=request.user,
+                        valide_par=request.user,
+                        validated_at=timezone.now(),
+                        periode=tx.periode,
+                        projet=tx.projet
+                    )
+                except (ValueError, TypeError):
+                    pass
+
         # +50 pts pour signataire
         if signalement.auteur:
             signalement.auteur.reputation_score = (signalement.auteur.reputation_score or 0) + 50
@@ -807,42 +1044,39 @@ def resoudre_enquete_signalement(request, pk):
     signalement.resolution_a = timezone.now()
     signalement.save()
 
-    # Créer action d'audit
+    # Log final dans le Timeline d'Audit
     ActionDGDDL.objects.create(
         signalement=signalement,
         action_type="RESOLUTION",
-        description=f"Résolution: {resolution}. {justification}",
+        description=f"Verdict : {resolution}. {justification}",
         effectuee_par=request.user
     )
 
-    # Notifier Maire
-    if signalement.commune.maire and resolution == "FRAUDE":
+    # Sanction Maire si fraude avérée dans sa commune
+    if resolution == "FRAUDE" and signalement.commune.maire:
+        maire = signalement.commune.maire
+        maire.reputation_score = max(0, (maire.reputation_score or 0) - 20)
+        maire.save(update_fields=["reputation_score"])
         notify_user(
-            signalement.commune.maire,
-            "⚖️ Fraude Confirmée",
-            f"L'enquête a confirmé une fraude sur : {signalement.sujet}",
-            "SIGNALEMENT"
-        )
-    elif signalement.commune.maire and resolution == "FAUX":
-        notify_user(
-            signalement.commune.maire,
-            "✅ Disculpé",
-            f"Le signalement a été jugé infondé. Vous êtes disculpé.",
+            maire,
+            "⚖️ Fraude Confirmée dans votre Commune",
+            f"L'enquête DGDDL a confirmé une fraude. Votre score de réputation a été impacté.",
             "SIGNALEMENT"
         )
 
     # Notifier tous les votants
     for vote in signalement.votes.all():
-        notify_user(
-            vote.citoyen,
-            f"⚖️ Décision: {resolution}",
-            f"L'enquête sur '{signalement.sujet}' est close.",
-            "SIGNALEMENT"
-        )
+        if vote.citoyen:
+            notify_user(
+                vote.citoyen,
+                f"⚖️ Verdict Rendu: {resolution}",
+                f"L'enquête sur le signalement auquel vous avez participé est terminée.",
+                "SIGNALEMENT"
+            )
 
     from .serializers import SignalementSerializer
     return Response({
-        "message": f"Enquête résolue: {resolution}",
+        "message": f"Enquête résolue avec succès: {resolution}",
         "signalement": SignalementSerializer(signalement).data
     })
 
@@ -1290,3 +1524,55 @@ def notifications_stream(request):
     response["Cache-Control"] = "no-cache"
     response["X-Accel-Buffering"] = "no" # Indispensable pour Nginx
     return response
+
+
+# ─── PROPOSITIONS EXTRAS (VOTES, COMMENTAIRES, PREUVES) ───────────────────────
+
+@api_view(["POST"])
+@permission_classes([IsVerifiedUser])
+def ajouter_preuve_proposition(request, pk):
+    """Citoyen : Ajoute une preuve IPFS à une proposition de dépense."""
+    from .models import PropositionDepense, PreuveProposition
+    from .serializers import PreuvePropositionSerializer
+
+    try:
+        prop = PropositionDepense.objects.get(pk=pk)
+    except PropositionDepense.DoesNotExist:
+        return Response({"error": "Proposition introuvable."}, status=404)
+
+    if prop.soumis_par and prop.soumis_par != request.user:
+        return Response({"error": "Action non autorisée."}, status=403)
+
+    serializer = PreuvePropositionSerializer(data={**request.data, "proposition": str(pk)})
+    if serializer.is_valid():
+        serializer.save()
+        # +5 pts bonus pour une preuve
+        request.user.reputation_score = (request.user.reputation_score or 0) + 5
+        request.user.save(update_fields=["reputation_score"])
+        return Response(serializer.data, status=201)
+    return Response(serializer.errors, status=400)
+
+
+class CommentairePropositionListCreateView(generics.ListCreateAPIView):
+    """Citoyen : Liste/crée des commentaires sur une proposition."""
+    from .serializers import CommentairePropositionSerializer
+    serializer_class = CommentairePropositionSerializer
+    permission_classes = [AllowAny]
+
+    def get_queryset(self):
+        from .models import CommentaireProposition
+        prop_id = self.kwargs.get("pk")
+        return CommentaireProposition.objects.filter(
+            proposition_id=prop_id
+        ).select_related("auteur").order_by("created_at")
+
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [IsVerifiedUser()]
+        return [AllowAny()]
+
+    def perform_create(self, serializer):
+        from .models import PropositionDepense
+        prop_id = self.kwargs.get("pk")
+        prop = PropositionDepense.objects.get(pk=prop_id)
+        serializer.save(proposition=prop, auteur=self.request.user)

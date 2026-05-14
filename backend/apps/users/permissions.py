@@ -89,3 +89,25 @@ class IsChercheur(BasePermission):
             request.user.profession == Profession.CHERCHEUR and
             request.user.profession_verified
         )
+
+
+class IsVerifiedUser(BasePermission):
+    """
+    Vérifie si l'utilisateur est 'vérifié' selon les standards de la plateforme.
+    - Pour les citoyens/journalistes/ONG : doit avoir la certification Sentinelle (APPROVED).
+    - Pour les rôles institutionnels (Maire, Agent, DGDDL) : sont vérifiés par défaut lors de la création par admin.
+    """
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+        
+        # DGDDL et Cour des Comptes sont toujours autorisés
+        if request.user.role in [Role.DGDDL, Role.COUR_COMPTES]:
+            return True
+            
+        # Rôles institutionnels (Maire, Agent) sont autorisés s'ils sont rattachés à une commune
+        if request.user.is_institutional_role:
+            return request.user.commune is not None
+            
+        # Citoyens et autres rôles publics doivent être certifiés Sentinelle
+        return request.user.certification_status == "APPROVED"

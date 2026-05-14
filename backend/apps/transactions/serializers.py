@@ -2,7 +2,8 @@ from rest_framework import serializers
 from .models import (
     Transaction, TransactionStatut, Signalement, PreuveSignalement,
     PropositionDepense, VoteProposition, VoteSignalement,
-    CommentaireSignalement, ActionDGDDL
+    CommentaireSignalement, ActionDGDDL,
+    CommentaireProposition, PreuveProposition
 )
 from ..users.serializers import UserSerializer
 from ..communes.serializers import CommuneSerializer
@@ -61,6 +62,7 @@ class TransactionSerializer(TransactionBaseSerializer):
     valide_par_detail = UserSerializer(source="valide_par", read_only=True)
     commune_detail = CommuneSerializer(source="commune", read_only=True)
     projet_nom = serializers.ReadOnlyField(source="projet.nom")
+    corrections = serializers.SerializerMethodField()
 
     class Meta:
         model = Transaction
@@ -68,6 +70,7 @@ class TransactionSerializer(TransactionBaseSerializer):
             "id", "commune", "commune_detail", "type", "statut",
             "montant_fcfa", "categorie", "description", "motif_rejet", "periode",
             "projet", "projet_nom",
+            "parent_frauduleux", "is_correction", "correction_justification", "corrections",
             "ipfs_hash", "ipfs_url",
             "blockchain_tx_hash_soumission", "blockchain_tx_hash_validation",
             "blockchain_synced_at",
@@ -82,6 +85,10 @@ class TransactionSerializer(TransactionBaseSerializer):
             "soumis_par", "valide_par",
             "created_at", "updated_at", "validated_at",
         ]
+    def get_corrections(self, obj):
+        if obj.corrections.exists():
+            return TransactionSerializer(obj.corrections.all(), many=True).data
+        return []
 
 
 class TransactionCreateSerializer(TransactionBaseSerializer):
@@ -129,6 +136,7 @@ class SignalementSerializer(serializers.ModelSerializer):
     auteur_detail = UserSerializer(source="auteur", read_only=True)
     enquete_lancee_par_detail = UserSerializer(source="enquete_lancee_par", read_only=True)
     resolution_par_detail = UserSerializer(source="resolution_par", read_only=True)
+    transaction_detail = TransactionSerializer(source="transaction", read_only=True)
     nb_preuves = serializers.SerializerMethodField()
     nb_votes = serializers.SerializerMethodField()
     pct_credible = serializers.SerializerMethodField()
@@ -138,9 +146,9 @@ class SignalementSerializer(serializers.ModelSerializer):
     class Meta:
         model = Signalement
         fields = [
-            "id", "commune", "commune_detail", "sujet", "description", "transaction",
+            "id", "commune", "commune_detail", "sujet", "description", "transaction", "transaction_detail",
             "auteur", "auteur_detail", "statut", "is_prioritaire", "is_reviewed",
-            "nb_preuves", "nb_votes", "pct_credible",
+            "nb_preuves", "nb_votes", "pct_credible", "preuves",
             "enquete_lancee_par", "enquete_lancee_par_detail", "enquete_lancee_a",
             "resolution", "resolution_justification", "resolution_par", "resolution_par_detail", "resolution_a",
             "created_by_profession", "commentaires", "actions_dgddl", "created_at", "updated_at"
@@ -159,6 +167,9 @@ class SignalementSerializer(serializers.ModelSerializer):
 
     def get_pct_credible(self, obj):
         return obj.pct_credible
+
+    def get_preuves(self, obj):
+        return PreuveSignalementSerializer(obj.preuves.all(), many=True).data
 
     def get_commentaires(self, obj):
         from .models import CommentaireSignalement
@@ -208,6 +219,8 @@ class PropositionSerializer(serializers.ModelSerializer):
     score_vote = serializers.IntegerField(read_only=True)
     pct_soutien = serializers.FloatField(read_only=True)
     mon_vote = serializers.SerializerMethodField()
+    nb_preuves = serializers.SerializerMethodField()
+    commentaires = serializers.SerializerMethodField()
 
     class Meta:
         model = PropositionDepense
@@ -215,9 +228,10 @@ class PropositionSerializer(serializers.ModelSerializer):
             "id", "commune", "commune_detail", "titre", "description",
             "categorie", "budget_demande_fcfa",
             "soumis_par", "soumis_par_detail",
-            "statut", "deadline_vote",
+            "statut", "is_official", "maire_signature_hash", "resultat_vote_hash",
+            "date_passage_officiel", "deadline_vote_officiel", "deadline_vote",
             "nb_soutiens", "nb_oppositions", "score_vote", "pct_soutien",
-            "mon_vote",
+            "mon_vote", "nb_preuves", "commentaires", "preuves",
             "created_at", "updated_at",
         ]
         read_only_fields = ["id", "soumis_par", "statut", "created_at", "updated_at"]
@@ -228,6 +242,16 @@ class PropositionSerializer(serializers.ModelSerializer):
             return None
         vote = obj.votes.filter(citoyen=request.user).first()
         return vote.type_vote if vote else None
+
+    def get_nb_preuves(self, obj):
+        return obj.preuves.count()
+
+    def get_commentaires(self, obj):
+        commentaires = obj.commentaires.all()
+        return CommentairePropositionSerializer(commentaires, many=True, read_only=True).data
+
+    def get_preuves(self, obj):
+        return PreuvePropositionSerializer(obj.preuves.all(), many=True).data
 
     def create(self, validated_data):
         request = self.context.get("request")
@@ -304,3 +328,32 @@ class ActionDGDDLSerializer(serializers.ModelSerializer):
             "effectuee_par", "effectuee_par_detail", "effectuee_par_nom", "created_at"
         ]
         read_only_fields = ["id", "signalement", "effectuee_par", "created_at"]
+
+
+# ─── PROPOSITION EXTRAS ───────────────────────────────────
+
+class PreuvePropositionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PreuveProposition
+        fields = ["id", "proposition", "ipfs_hash", "ipfs_url", "nom_fichier", "type_fichier", "uploaded_at"]
+        read_only_fields = ["id", "uploaded_at"]
+
+
+class CommentairePropositionSerializer(serializers.ModelSerializer):
+    auteur_detail = UserSerializer(source="auteur", read_only=True)
+    auteur_nom = serializers.CharField(source="auteur.full_name", read_only=True)
+
+    class Meta:
+        model = CommentaireProposition
+        fields = [
+            "id", "proposition", "auteur", "auteur_detail", "auteur_nom",
+            "contenu", "type_commentaire", "created_at"
+        ]
+        read_only_fields = ["id", "proposition", "auteur", "created_at"]
+
+    def create(self, validated_data):
+        request = self.context.get("request")
+        if request and request.user:
+            validated_data["auteur"] = request.user
+        return super().create(validated_data)
+

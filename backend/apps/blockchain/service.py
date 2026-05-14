@@ -3,7 +3,6 @@ Service Web3.py — interaction avec BudgetLedger.sol sur Polygon Amoy.
 Le backend signe les transactions côté serveur (pas de MetaMask côté client).
 """
 import json
-import os
 from pathlib import Path
 from typing import Optional
 from web3 import Web3
@@ -151,6 +150,65 @@ class BlockchainService:
         func = contract.functions.enregistrerRecette(
             recette_id, commune_id, montant, source, ipfs_hash
         )
+        return self._send_transaction(func)
+
+    def officialiser_proposition(
+        self,
+        proposition_id: str,
+        commune_id: str,
+        ipfs_hash: str
+    ) -> str:
+        """Appelle officialiserProposition sur le Smart Contract."""
+        contract = self._get_contract()
+        func = contract.functions.officialiserProposition(
+            proposition_id, commune_id, ipfs_hash
+        )
+        return self._send_transaction(func)
+
+    def cloturer_proposition(
+        self,
+        proposition_id: str,
+        commune_id: str,
+        approuvee: bool,
+        soutien: int,
+        opposition: int
+    ) -> str:
+        """Appelle cloturerProposition sur le Smart Contract."""
+        contract = self._get_contract()
+        func = contract.functions.cloturerProposition(
+            proposition_id, commune_id, approuvee, soutien, opposition
+        )
+        return self._send_transaction(func)
+
+    def lancer_enquete(
+        self,
+        signalement_id: str,
+        commune_id: str
+    ) -> str:
+        """La DGDDL ancre le lancement d'une enquête officielle."""
+        contract = self._get_contract()
+        func = contract.functions.lancerEnquete(
+            signalement_id, commune_id
+        )
+        return self._send_transaction(func)
+
+    def resoudre_enquete(
+        self,
+        signalement_id: str,
+        commune_id: str,
+        resolution: str
+    ) -> str:
+        """La DGDDL ancre le verdict final de l'enquête."""
+        contract = self._get_contract()
+        func = contract.functions.resoudreEnquete(
+            signalement_id, commune_id, resolution
+        )
+        return self._send_transaction(func)
+
+    def enregistrer_dotation(self, commune_id: str, montant: int) -> str:
+        """La DGDDL enregistre une dotation budgétaire sur la blockchain."""
+        contract = self._get_contract()
+        func = contract.functions.enregistrerDotation(commune_id, montant)
         return self._send_transaction(func)
 
     def get_total_transactions(self) -> Optional[int]:

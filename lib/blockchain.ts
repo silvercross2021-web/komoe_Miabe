@@ -228,12 +228,118 @@ export const BUDGET_LEDGER_ABI = [
   {
     "anonymous": false,
     "inputs": [
+      { "indexed": true,  "internalType": "bytes32", "name": "role",     "type": "bytes32" },
+      { "indexed": true,  "internalType": "address", "name": "wallet",   "type": "address" },
+      { "indexed": true,  "internalType": "address", "name": "parAdmin", "type": "address" },
+      { "indexed": false, "internalType": "uint256", "name": "timestamp","type": "uint256" }
+    ],
+    "name": "RoleRevoque",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
       { "indexed": true,  "internalType": "string",  "name": "communeId", "type": "string" },
       { "indexed": false, "internalType": "uint256", "name": "montant",   "type": "uint256" },
       { "indexed": false, "internalType": "uint256", "name": "timestamp", "type": "uint256" }
     ],
     "name": "DotationEnregistree",
     "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": true,  "internalType": "string",  "name": "propositionId", "type": "string" },
+      { "indexed": true,  "internalType": "string",  "name": "communeId",     "type": "string" },
+      { "indexed": false, "internalType": "string",  "name": "ipfsHash",      "type": "string" },
+      { "indexed": true,  "internalType": "address", "name": "parMaire",      "type": "address" },
+      { "indexed": false, "internalType": "uint256", "name": "timestamp",     "type": "uint256" }
+    ],
+    "name": "PropositionOfficialisee",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": true,  "internalType": "string",  "name": "propositionId",   "type": "string" },
+      { "indexed": true,  "internalType": "string",  "name": "communeId",       "type": "string" },
+      { "indexed": false, "internalType": "bool",    "name": "approuvee",       "type": "bool" },
+      { "indexed": false, "internalType": "uint256", "name": "nbVotesSoutien",  "type": "uint256" },
+      { "indexed": false, "internalType": "uint256", "name": "nbVotesOpposition","type": "uint256" },
+      { "indexed": false, "internalType": "uint256", "name": "timestamp",       "type": "uint256" }
+    ],
+    "name": "PropositionCloturee",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": true,  "internalType": "string",  "name": "signalementId", "type": "string" },
+      { "indexed": true,  "internalType": "string",  "name": "communeId",     "type": "string" },
+      { "indexed": true,  "internalType": "address", "name": "parDGDDL",      "type": "address" },
+      { "indexed": false, "internalType": "uint256", "name": "timestamp",     "type": "uint256" }
+    ],
+    "name": "EnqueteLancee",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": true,  "internalType": "string",  "name": "signalementId", "type": "string" },
+      { "indexed": true,  "internalType": "string",  "name": "communeId",     "type": "string" },
+      { "indexed": false, "internalType": "string",  "name": "resolution",    "type": "string" },
+      { "indexed": true,  "internalType": "address", "name": "parDGDDL",      "type": "address" },
+      { "indexed": false, "internalType": "uint256", "name": "timestamp",     "type": "uint256" }
+    ],
+    "name": "EnqueteResolue",
+    "type": "event"
+  },
+  // ─── Fonctions Budget Participatif (Maire) ──────────────────────────────────
+  {
+    "inputs": [
+      { "internalType": "string", "name": "propositionId", "type": "string" },
+      { "internalType": "string", "name": "communeId",     "type": "string" },
+      { "internalType": "string", "name": "ipfsHash",      "type": "string" }
+    ],
+    "name": "officialiserProposition",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "string",  "name": "propositionId",    "type": "string" },
+      { "internalType": "string",  "name": "communeId",        "type": "string" },
+      { "internalType": "bool",    "name": "approuvee",        "type": "bool" },
+      { "internalType": "uint256", "name": "nbVotesSoutien",   "type": "uint256" },
+      { "internalType": "uint256", "name": "nbVotesOpposition","type": "uint256" }
+    ],
+    "name": "cloturerProposition",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  // ─── Fonctions Enquêtes (Admin DGDDL) ───────────────────────────────────────
+  {
+    "inputs": [
+      { "internalType": "string", "name": "signalementId", "type": "string" },
+      { "internalType": "string", "name": "communeId",     "type": "string" }
+    ],
+    "name": "lancerEnquete",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "string", "name": "signalementId", "type": "string" },
+      { "internalType": "string", "name": "communeId",     "type": "string" },
+      { "internalType": "string", "name": "resolution",    "type": "string" }
+    ],
+    "name": "resoudreEnquete",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
   }
 
 ] as const;
@@ -243,5 +349,5 @@ export const BUDGET_LEDGER_ABI = [
  * Mettre à jour .env.local → NEXT_PUBLIC_CONTRACT_ADDRESS après chaque redéploiement.
  */
 export const BUDGET_LEDGER_ADDRESS = (
-  process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "0xca2dc21b138788ae2e22bad5e60fd84bca851a34"
+  process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "0xDd60F74Dbca514C8eD1AfecFad054F416B18E6D4"
 ) as `0x${string}`;

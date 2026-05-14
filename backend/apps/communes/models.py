@@ -63,6 +63,15 @@ class Projet(models.Model):
         related_name="projets_finances",
         limit_choices_to={'role': 'BAILLEUR'}
     )
+    parent_proposition = models.ForeignKey(
+        "transactions.PropositionDepense",
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name="projets_generes",
+        help_text="Idée citoyenne à l'origine de ce projet"
+    )
+    budget_consomme_fcfa = models.BigIntegerField(default=0)
+    
     blockchain_audit_hash = models.CharField(max_length=100, blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

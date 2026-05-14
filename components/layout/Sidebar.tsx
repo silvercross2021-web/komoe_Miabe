@@ -48,27 +48,23 @@ const NAV_CONTROLE: NavItem[] = [
 
 const NAV_COMMUNE: NavItem[] = [
   { name: 'Tableau de bord',         href: '/commune/dashboard',    icon: LayoutDashboard },
-  { name: 'Saisies',                 href: '/commune/saisies',      icon: Receipt,        onlyFor: ['AGENT_FINANCIER', 'MAIRE'] },
-  { name: 'Budget',                  href: '/commune/budget',       icon: PieChart },
-  { name: 'Profil',                  href: '/commune/profil',       icon: Building2 },
-  { name: 'Citoyens',                href: '/commune/citoyens',     icon: Users,          onlyFor: ['MAIRE'] },
+  { name: 'Saisies Financières',     href: '/commune/saisies',      icon: Receipt,        onlyFor: ['AGENT_FINANCIER', 'MAIRE'] },
+  { name: 'Gestion des Projets',     href: '/commune/projets',      icon: Building2 },
+  { name: 'Budget Participatif',     href: '/commune/engagements',  icon: CheckCircle },
+  { name: 'Citoyens & Rôles',        href: '/commune/citoyens',     icon: Users,          onlyFor: ['MAIRE'] },
   { name: 'Signalements',            href: '/commune/signalements', icon: AlertTriangle,  onlyFor: ['MAIRE'] },
-  { name: 'Rôles & Accès',           href: '/commune/roles',        icon: Shield,         onlyFor: ['MAIRE'] },
+  { name: 'Budget & Audit',          href: '/commune/budget',       icon: PieChart },
   { name: 'Réseau Polygon',          href: '/commune/blockchain',   icon: Network },
 ];
 
 const NAV_PUBLIC: NavItem[] = [
   { name: 'Tableau de bord',         href: '/public/dashboard',             icon: LayoutDashboard },
-  { name: 'Transactions',            href: '/public/transactions',          icon: Receipt },
-  { name: 'Budget temps réel',       href: '/public/budget',                icon: PieChart },
-  { name: 'Communes',                href: '/public/communes',              icon: MapPin },
-  { name: 'Signalements',            href: '/public/signalements',          icon: AlertTriangle },
-  { name: 'Vote citoyens',           href: '/public/vote',                  icon: Users },
+  { name: 'Budget Participatif',     href: '/public/engagements',           icon: Users },
+  { name: 'Projets de la Commune',   href: '/public/projets',               icon: Building2 },
+  { name: 'Transactions (Réel)',     href: '/public/transactions',          icon: Receipt },
+  { name: 'Budget Temps Réel',       href: '/public/budget',                icon: PieChart },
   { name: 'Vérifier preuve KOMOE',   href: '/public/verifier-preuve',       icon: ShieldCheck },
-  { name: 'Carte Transparence',      href: '/public/carte',                 icon: Globe },
-  { name: 'Rapports & Audits',       href: '/public/rapports',              icon: FileText },
   { name: 'Réseau Polygon',          href: '/public/blockchain',            icon: Network },
-  { name: 'Projets financés',        href: '/public/projets',               icon: Building2, onlyFor: ['BAILLEUR'] },
   { name: 'Mon profil',              href: '/public/profil',                icon: Building2 },
 ];
 

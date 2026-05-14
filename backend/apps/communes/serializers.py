@@ -43,8 +43,8 @@ class ProjetSerializer(serializers.ModelSerializer):
         model = Projet
         fields = [
             "id", "commune", "commune_nom", "nom", "description",
-            "budget_alloue_fcfa", "taux_execution", "statut",
-            "bailleur", "bailleur_nom", "created_at", "updated_at"
+            "budget_alloue_fcfa", "budget_consomme_fcfa", "taux_execution", "statut",
+            "bailleur", "bailleur_nom", "parent_proposition", "created_at", "updated_at"
         ]
 
     def get_bailleur_nom(self, obj):
