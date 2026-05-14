@@ -629,7 +629,7 @@ const BailleurModule = ({ verified }: { verified: boolean }) => {
     <div className="space-y-6 animate-in slide-in-from-right-4 duration-500">
       <div className="flex items-center justify-between">
         <h3 className="text-xs font-black uppercase tracking-[0.3em] text-primary italic">Module Audit Bailleur</h3>
-        {!verified && <Badge variant="outline" className="text-[10px] text-amber-600 bg-amber-50">Vérification Requise pour Détails</Badge>}
+        {!verified && <Badge variant="outline" className="text-[10px] text-amber-600 bg-amber-500/10 border-amber-500/20">Vérification Requise pour Détails</Badge>}
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -646,7 +646,7 @@ const BailleurModule = ({ verified }: { verified: boolean }) => {
                <ProjetCard projet={{...p, nom: p.nom, budget_alloue_fcfa: p.budget_alloue_fcfa}} />
                {!verified && (
                  <div className="absolute inset-0 flex items-center justify-center bg-background/20 backdrop-blur-[1px] rounded-3xl">
-                   <div className="bg-white/90 p-2 rounded-xl shadow-lg border border-border flex items-center gap-2">
+                   <div className="bg-card/90 p-2 rounded-xl shadow-lg border border-border flex items-center gap-2">
                      <Lock className="w-3 h-3 text-amber-600" />
                      <span className="text-[10px] font-bold uppercase">Auditeur non certifié</span>
                    </div>
@@ -668,9 +668,9 @@ const PresseModule = ({ verified }: { verified: boolean }) => {
         <h3 className="text-xs font-black uppercase tracking-[0.3em] text-primary italic">Module Investigation Presse</h3>
       </div>
 
-      <Card className="rounded-[32px] border-dashed bg-blue-50/30 border-blue-200">
+      <Card className="rounded-[32px] border-dashed bg-blue-500/5 border-blue-500/20">
         <CardContent className="p-8 flex flex-col items-center text-center max-w-md mx-auto">
-          <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center mb-6">
+          <div className="w-16 h-16 bg-blue-500/10 text-blue-500 rounded-2xl flex items-center justify-center mb-6">
             <Search className="w-8 h-8" />
           </div>
           <h4 className="text-xl font-black mb-3">Centre d'Exportation Massive</h4>
@@ -680,19 +680,19 @@ const PresseModule = ({ verified }: { verified: boolean }) => {
           
           {verified ? (
             <div className="flex flex-col w-full gap-3">
-              <Button className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-xl">
+              <Button className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-xl border-none">
                 Exporter le Registre National (CSV)
               </Button>
-              <Button variant="outline" className="w-full h-12 border-blue-200 text-blue-600 font-bold rounded-xl">
+              <Button variant="outline" className="w-full h-12 border-blue-500/30 text-blue-500 font-bold rounded-xl hover:bg-blue-500/5">
                 Accès API REST Investigation
               </Button>
             </div>
           ) : (
-            <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-start gap-3 text-left">
+            <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-start gap-3 text-left">
               <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
               <div>
-                <p className="text-xs font-bold text-amber-900 uppercase tracking-tighter">Accès Restreint</p>
-                <p className="text-[11px] font-medium text-amber-700 mt-0.5 leading-snug">
+                <p className="text-xs font-bold text-amber-500 uppercase tracking-tighter">Accès Restreint</p>
+                <p className="text-[11px] font-medium text-amber-500/80 mt-0.5 leading-snug">
                   La certification Journaliste est requise pour l'export massif de données sensibles.
                 </p>
               </div>
@@ -715,7 +715,7 @@ const CourComptesDashboard = () => {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <StatsCard label="Transactions auditées" value={count} icon={<FileTextIcon />} />
+        <StatsCard label="Transactions auditées" value={count} icon={<FileText className="w-4 h-4" />} />
         <StatsCard label="Preuves blockchain valides" value={transactions.filter(t => t.blockchain_tx_hash_validation).length} icon={<ShieldCheck />} />
         <StatsCard label="Mairies connectées" value={communes.length} icon={<Building2 />} />
       </div>
@@ -753,7 +753,7 @@ const CourComptesDashboard = () => {
                       <ExternalLink className="w-3 h-3" />
                     </a>
                   ) : (
-                    <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-md border border-amber-200">En attente signature</span>
+                    <span className="text-[10px] font-bold text-amber-600 bg-amber-500/10 px-2 py-1 rounded-md border border-amber-500/20">En attente signature</span>
                   )}
                 </div>
               </div>
@@ -788,15 +788,15 @@ const UnifiedPublicDashboard = ({ communeId, role }: { communeId: number | null,
       {!isVerified && (
         <motion.div 
           initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }}
-          className="p-4 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-[24px] flex flex-col md:flex-row items-center justify-between gap-4 shadow-sm"
+          className="p-4 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20 rounded-[24px] flex flex-col md:flex-row items-center justify-between gap-4 shadow-sm"
         >
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center shrink-0">
+            <div className="w-12 h-12 bg-amber-500/20 text-amber-500 rounded-2xl flex items-center justify-center shrink-0">
               <ShieldAlert className="w-6 h-6" />
             </div>
             <div>
-              <p className="text-sm font-black text-amber-900 uppercase italic">Vérification de Sentinelle Requise</p>
-              <p className="text-xs font-medium text-amber-700/80">Pour signaler une anomalie ou accéder aux audits, certifiez votre identité numérique.</p>
+              <p className="text-sm font-black text-amber-500 uppercase italic">Vérification de Sentinelle Requise</p>
+              <p className="text-xs font-medium text-amber-500/80">Pour signaler une anomalie ou accéder aux audits, certifiez votre identité numérique.</p>
             </div>
           </div>
           <Button onClick={() => router.push('/public/certification')} className="bg-amber-600 hover:bg-amber-700 text-white font-black rounded-xl h-11 px-6 shadow-lg shadow-amber-600/20">
@@ -908,18 +908,18 @@ const UnifiedPublicDashboard = ({ communeId, role }: { communeId: number | null,
              {[
                { id: 'vote', label: 'Budget Participatif', desc: 'Votez sur les futurs investissements.', icon: <Users />, color: 'emerald', path: '/public/vote' },
                { id: 'map', label: 'Atlas de la Transparence', desc: 'Cartographie des 201 communes.', icon: <Globe />, color: 'purple', path: '/public/carte' },
-               { id: 'reports', label: 'Archives Publiques', desc: 'Accès aux rapports certifiés.', icon: <FileTextIcon />, color: 'blue', path: '/public/rapports' },
+               { id: 'reports', label: 'Archives Publiques', desc: 'Accès aux rapports certifiés.', icon: <FileText className="w-5 h-5" />, color: 'blue', path: '/public/rapports' },
              ].map((s) => (
                <Card 
                 key={s.id}
                 className="group cursor-pointer hover:border-primary/50 transition-all border border-border shadow-sm rounded-[24px] overflow-hidden"
                 onClick={() => router.push(s.path)}
                >
-                 <CardContent className="p-5 flex items-center gap-4 bg-white hover:bg-muted/30 transition-colors">
+                 <CardContent className="p-5 flex items-center gap-4 bg-card hover:bg-muted/30 transition-colors">
                    <div className={cn(
                      "p-3 rounded-2xl group-hover:scale-110 transition-transform",
-                     s.color === 'emerald' ? 'bg-emerald-50 text-emerald-600' : 
-                     s.color === 'purple' ? 'bg-purple-50 text-purple-600' : 'bg-blue-50 text-blue-600'
+                     s.color === 'emerald' ? 'bg-emerald-500/10 text-emerald-600' : 
+                     s.color === 'purple' ? 'bg-purple-500/10 text-purple-600' : 'bg-blue-500/10 text-blue-600'
                    )}>
                      {s.icon}
                    </div>
@@ -939,8 +939,6 @@ const UnifiedPublicDashboard = ({ communeId, role }: { communeId: number | null,
   );
 };
 
-// Just a small mock for the icon since I couldn't import FileText from lucide directly in previous block
-const FileTextIcon = () => <Activity className="w-5 h-5" />;
 
 // ─── Rendu principal ──────────────────────────────────────────────────────────
 export const DashboardView = ({ role }: DashboardViewProps) => {

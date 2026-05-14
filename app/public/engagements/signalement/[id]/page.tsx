@@ -122,7 +122,7 @@ export default function SignalementDetailPage() {
     }
   };
 
-  const [commentType, setCommentType] = useState("AVIS");
+  const [commentType, setCommentType] = useState<"AVIS" | "JUSTIFICATION" | "ENQUETE">("AVIS");
 
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -146,8 +146,8 @@ export default function SignalementDetailPage() {
 
   if (loading) return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-      <Loader2 className="w-10 h-10 animate-spin text-indigo-500" />
-      <p className="text-slate-500">Chargement de la publication...</p>
+      <Loader2 className="w-10 h-10 animate-spin text-primary" />
+      <p className="text-muted-foreground">Chargement de la publication...</p>
     </div>
   );
 
@@ -164,7 +164,7 @@ export default function SignalementDetailPage() {
     <div className="max-w-4xl mx-auto p-4 md:p-6 pb-24 space-y-8">
       <button 
         onClick={() => router.back()}
-        className="flex items-center gap-2 text-slate-500 hover:text-indigo-600 transition-colors"
+        className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors"
       >
         <ChevronLeft className="w-5 h-5" />
         Retour aux engagements
@@ -173,8 +173,8 @@ export default function SignalementDetailPage() {
         <div className="flex flex-col md:flex-row gap-8">
           {/* Main Content */}
           <div className="flex-1 space-y-8">
-            <Card className="rounded-3xl border-slate-200 overflow-hidden shadow-xl bg-white">
-              <CardHeader className="bg-slate-50 border-b border-slate-100 p-6">
+            <Card className="rounded-3xl border-border overflow-hidden shadow-xl bg-card">
+              <CardHeader className="bg-muted/50 border-b border-border p-6">
                 <div className="flex justify-between items-start mb-4">
                   <Badge className={`px-4 py-1.5 rounded-full text-xs font-bold ${
                     signalement.statut === "ENQUETE_DGDDL" ? "bg-orange-100 text-orange-700 animate-pulse" :
@@ -184,56 +184,56 @@ export default function SignalementDetailPage() {
                   }`}>
                     {signalement.statut}
                   </Badge>
-                  <div className="flex items-center gap-2 text-slate-400 text-sm">
+                  <div className="flex items-center gap-2 text-muted-foreground text-sm">
                     <Clock className="w-4 h-4" />
                     {formatDateShort(signalement.created_at)}
                   </div>
                 </div>
-                <CardTitle className="text-3xl font-black text-slate-900 leading-tight">
+                <CardTitle className="text-3xl font-black text-foreground leading-tight">
                   {signalement.sujet}
                 </CardTitle>
-                <div className="flex items-center gap-4 mt-4 text-slate-500">
+                <div className="flex items-center gap-4 mt-4 text-muted-foreground">
                   <div className="flex items-center gap-1.5">
                     <MapPin className="w-4 h-4" />
-                    <span className="font-medium">{signalement.commune_detail?.nom}</span>
+                    <span className="font-medium text-foreground">{signalement.commune_detail?.nom}</span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <User className="w-4 h-4" />
-                    <span>{signalement.auteur_detail?.full_name || "Citoyen Anonyme"}</span>
+                    <span className="text-foreground">{signalement.auteur_detail?.full_name || "Citoyen Anonyme"}</span>
                   </div>
                 </div>
               </CardHeader>
               <CardContent className="p-8">
-                <p className="text-slate-600 leading-relaxed text-lg whitespace-pre-wrap mb-8">
+                <p className="text-foreground/80 leading-relaxed text-lg whitespace-pre-wrap mb-8">
                   {signalement.description}
                 </p>
 
                 {/* Transaction Linked Card (if fraud confirmed) */}
                 {signalement.transaction_detail && (
                   <div className={`mb-8 p-6 rounded-2xl border ${
-                    signalement.statut === "VALIDE_FRAUDE" ? "bg-red-50 border-red-100" : "bg-slate-50 border-slate-100"
+                    signalement.statut === "VALIDE_FRAUDE" ? "bg-red-500/10 border-red-500/20" : "bg-muted border-border"
                   }`}>
                     <div className="flex justify-between items-start mb-4">
                       <div>
-                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Transaction Concernée</p>
-                        <p className="text-lg font-bold text-slate-900">{signalement.transaction_detail.montant_fcfa.toLocaleString()} FCFA</p>
+                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Transaction Concernée</p>
+                        <p className="text-lg font-bold text-foreground">{signalement.transaction_detail.montant_fcfa.toLocaleString()} FCFA</p>
                       </div>
                       {signalement.statut === "VALIDE_FRAUDE" && (
                         <Badge className="bg-red-600 text-white animate-bounce">FRAUDE CONFIRMÉE</Badge>
                       )}
                     </div>
-                    <div className="text-sm text-slate-500 mb-4 line-clamp-1 italic">
+                    <div className="text-sm text-muted-foreground mb-4 line-clamp-1 italic">
                       {signalement.transaction_detail.description}
                     </div>
                     {signalement.transaction_detail.corrections && signalement.transaction_detail.corrections.length > 0 && (
-                      <div className="mt-4 pt-4 border-t border-red-100">
-                        <p className="text-xs font-bold text-emerald-600 flex items-center gap-1.5 mb-2">
+                      <div className="mt-4 pt-4 border-t border-red-500/20">
+                        <p className="text-xs font-bold text-emerald-500 flex items-center gap-1.5 mb-2">
                           <CheckCircle2 className="w-4 h-4" /> CORRECTION APPLIQUÉE
                         </p>
                         {signalement.transaction_detail.corrections.map((corr: any) => (
-                          <div key={corr.id} className="bg-emerald-50 p-3 rounded-xl border border-emerald-100 flex justify-between items-center">
-                            <span className="font-bold text-emerald-700">{corr.montant_fcfa.toLocaleString()} FCFA</span>
-                            <span className="text-xs text-emerald-600">{formatDateShort(corr.created_at)}</span>
+                          <div key={corr.id} className="bg-emerald-500/10 p-3 rounded-xl border border-emerald-500/20 flex justify-between items-center">
+                            <span className="font-bold text-emerald-500">{corr.montant_fcfa.toLocaleString()} FCFA</span>
+                            <span className="text-xs text-emerald-500/70">{formatDateShort(corr.created_at)}</span>
                           </div>
                         ))}
                       </div>
@@ -243,8 +243,8 @@ export default function SignalementDetailPage() {
 
                 {/* Attachments */}
                 <div className="space-y-4 pt-6 border-t border-slate-100">
-                  <h3 className="font-bold flex items-center gap-2">
-                    <Paperclip className="w-5 h-5 text-indigo-500" />
+                  <h3 className="font-bold flex items-center gap-2 text-foreground">
+                    <Paperclip className="w-5 h-5 text-primary" />
                     Pièces jointes et Preuves ({signalement.nb_preuves})
                   </h3>
                   <div className="grid grid-cols-1 gap-4">
@@ -254,16 +254,16 @@ export default function SignalementDetailPage() {
                         href={preuve.ipfs_url} 
                         target="_blank" 
                         rel="noopener noreferrer"
-                        className="flex items-center gap-3 p-4 border border-slate-100 rounded-2xl hover:bg-slate-50 transition-all group"
+                        className="flex items-center gap-3 p-4 border border-border rounded-2xl hover:bg-muted transition-all group"
                       >
-                        <div className="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 group-hover:scale-110 transition-transform">
+                        <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
                           {preuve.type_fichier === "image" ? <ImageIcon className="w-6 h-6" /> : <FileText className="w-6 h-6" />}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-sm truncate">{preuve.nom_fichier || "Document Preuve"}</p>
-                          <p className="text-xs text-slate-400">Archivé sur IPFS</p>
+                          <p className="font-semibold text-sm truncate text-foreground">{preuve.nom_fichier || "Document Preuve"}</p>
+                          <p className="text-xs text-muted-foreground">Archivé sur IPFS</p>
                         </div>
-                        <ExternalLink className="w-4 h-4 text-slate-300 group-hover:text-indigo-600" />
+                        <ExternalLink className="w-4 h-4 text-muted-foreground group-hover:text-primary" />
                       </a>
                     ))}
                   </div>
@@ -272,25 +272,25 @@ export default function SignalementDetailPage() {
             </Card>
 
             {/* Timeline d'Enquête */}
-            <div className="bg-slate-50 rounded-3xl p-8 border border-slate-100 shadow-inner">
-              <h3 className="text-xl font-bold text-slate-900 mb-8 flex items-center gap-3">
+            <div className="bg-muted/30 rounded-3xl p-8 border border-border shadow-inner">
+              <h3 className="text-xl font-bold text-foreground mb-8 flex items-center gap-3">
                 <ShieldCheck className="w-6 h-6 text-orange-500" />
-                Journal d'Audit Transparenet
+                Journal d'Audit Transparent
               </h3>
               
-              <div className="relative space-y-8 before:absolute before:inset-0 before:ml-4 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-200 before:to-transparent">
+              <div className="relative space-y-8 before:absolute before:inset-0 before:ml-4 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-border before:to-transparent">
                 
                 {/* Step: Dépôt */}
                 <div className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
-                  <div className="flex items-center justify-center w-8 h-8 rounded-full border border-white bg-indigo-600 text-white shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2">
+                  <div className="flex items-center justify-center w-8 h-8 rounded-full border border-white bg-primary text-white shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2">
                     <CheckCircle2 className="w-4 h-4" />
                   </div>
-                  <div className="w-[calc(100%-3rem)] md:w-[calc(50%-2rem)] p-4 rounded-2xl bg-white border border-slate-100 shadow-sm">
+                  <div className="w-[calc(100%-3rem)] md:w-[calc(50%-2rem)] p-4 rounded-2xl bg-card border border-border shadow-sm">
                     <div className="flex items-center justify-between mb-1">
-                      <time className="font-bold text-indigo-600 text-xs uppercase tracking-widest">SIGNALEMENT DÉPOSÉ</time>
-                      <span className="text-[10px] text-slate-400">{formatDateShort(signalement.created_at)}</span>
+                      <time className="font-bold text-primary text-xs uppercase tracking-widest">SIGNALEMENT DÉPOSÉ</time>
+                      <span className="text-[10px] text-muted-foreground">{formatDateShort(signalement.created_at)}</span>
                     </div>
-                    <div className="text-slate-500 text-sm">Le dossier a été ouvert par une Sentinelle certifiée.</div>
+                    <div className="text-muted-foreground text-sm">Le dossier a été ouvert par une Sentinelle certifiée.</div>
                   </div>
                 </div>
 
@@ -300,11 +300,11 @@ export default function SignalementDetailPage() {
                     <div className={`flex items-center justify-center w-8 h-8 rounded-full border border-white ${signalement.statut === "VIRAL" ? "bg-rose-500" : "bg-slate-300"} text-white shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2`}>
                       {signalement.statut === "VIRAL" ? "🔥" : <ThumbsUp className="w-4 h-4" />}
                     </div>
-                    <div className="w-[calc(100%-3rem)] md:w-[calc(50%-2rem)] p-4 rounded-2xl bg-white border border-slate-100 shadow-sm">
+                    <div className="w-[calc(100%-3rem)] md:w-[calc(50%-2rem)] p-4 rounded-2xl bg-card border border-border shadow-sm">
                       <div className="flex items-center justify-between mb-1">
-                        <time className="font-bold text-slate-600 text-xs uppercase tracking-widest">VALIDATION SOCIALE</time>
+                        <time className="font-bold text-muted-foreground text-xs uppercase tracking-widest">VALIDATION SOCIALE</time>
                       </div>
-                      <div className="text-slate-500 text-sm">
+                      <div className="text-muted-foreground text-sm">
                         {signalement.nb_votes} votes citoyens. Crédibilité : {signalement.pct_credible}%.
                       </div>
                     </div>
@@ -317,13 +317,13 @@ export default function SignalementDetailPage() {
                     <div className="flex items-center justify-center w-8 h-8 rounded-full border border-white bg-orange-500 text-white shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2">
                       <FileText className="w-4 h-4" />
                     </div>
-                    <div className="w-[calc(100%-3rem)] md:w-[calc(50%-2rem)] p-4 rounded-2xl bg-white border border-orange-100 shadow-sm ring-1 ring-orange-50">
+                    <div className="w-[calc(100%-3rem)] md:w-[calc(50%-2rem)] p-4 rounded-2xl bg-card border border-orange-500/20 shadow-sm ring-1 ring-orange-500/10">
                       <div className="flex items-center justify-between mb-1">
-                        <time className="font-bold text-orange-600 text-xs uppercase tracking-widest">{action.action_type}</time>
-                        <span className="text-[10px] text-slate-400">{formatDateShort(action.created_at)}</span>
+                        <time className="font-bold text-orange-500 text-xs uppercase tracking-widest">{action.action_type}</time>
+                        <span className="text-[10px] text-muted-foreground">{formatDateShort(action.created_at)}</span>
                       </div>
-                      <div className="text-slate-700 text-sm font-medium">{action.description}</div>
-                      <div className="mt-2 text-[10px] text-slate-400 flex items-center gap-1">
+                      <div className="text-foreground text-sm font-medium">{action.description}</div>
+                      <div className="mt-2 text-[10px] text-muted-foreground flex items-center gap-1">
                         <ShieldCheck className="w-3 h-3" /> Officiel : {action.effectuee_par_nom}
                       </div>
                     </div>
@@ -350,8 +350,8 @@ export default function SignalementDetailPage() {
             </div>
 
             <div className="space-y-6">
-              <h2 className="text-2xl font-bold flex items-center gap-3">
-                <MessageSquare className="w-6 h-6 text-indigo-500" />
+              <h2 className="text-2xl font-bold flex items-center gap-3 text-foreground">
+                <MessageSquare className="w-6 h-6 text-primary" />
                 Discussions ({signalement.commentaires?.length || 0})
               </h2>
 
@@ -366,15 +366,15 @@ export default function SignalementDetailPage() {
                       </p>
                     </div>
                   )}
-                  <form onSubmit={handleAddComment} className={`bg-white rounded-2xl border border-slate-200 p-4 shadow-sm ${(user.role === "CITOYEN" && user.certification_status !== "APPROVED") || signalement.statut === "ENQUETE_DGDDL" ? "opacity-50 pointer-events-none" : ""}`}>
+                  <form onSubmit={handleAddComment} className={`bg-card rounded-2xl border border-border p-4 shadow-sm ${(user.role === "CITOYEN" && user.certification_status !== "APPROVED") || signalement.statut === "ENQUETE_DGDDL" ? "opacity-50 pointer-events-none" : ""}`}>
                     {/* Type selector for institutional users */}
                     {(user.role === "MAIRE" || user.role === "DGDDL") && (
-                      <div className="mb-4 flex items-center gap-3 bg-slate-50 p-2 rounded-xl border border-slate-100">
-                        <span className="text-xs font-bold text-slate-400 ml-2">RÔLE OFFICIEL :</span>
+                      <div className="mb-4 flex items-center gap-3 bg-muted p-2 rounded-xl border border-border">
+                        <span className="text-xs font-bold text-muted-foreground ml-2">RÔLE OFFICIEL :</span>
                         <select 
                           value={commentType}
-                          onChange={(e) => setCommentType(e.target.value)}
-                          className="text-xs font-bold bg-white border border-slate-200 rounded-lg px-3 py-1 text-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                          onChange={(e) => setCommentType(e.target.value as "AVIS" | "JUSTIFICATION" | "ENQUETE")}
+                          className="text-xs font-bold bg-card border border-border rounded-lg px-3 py-1 text-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                         >
                           <option value="AVIS">Avis standard</option>
                           {user.role === "MAIRE" && <option value="JUSTIFICATION">Justification du Maire</option>}
@@ -388,15 +388,15 @@ export default function SignalementDetailPage() {
                       disabled={(user.role === "CITOYEN" && user.certification_status !== "APPROVED") || signalement.statut === "ENQUETE_DGDDL"}
                       rows={3}
                       placeholder={signalement.statut === "ENQUETE_DGDDL" ? "Les discussions sont gelées pendant l'enquête..." : user.role === "MAIRE" ? "Apportez des précisions ou justifiez cette transaction..." : "Partagez votre avis..."}
-                      className="w-full p-4 bg-slate-50 border border-slate-100 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 resize-none"
+                      className="w-full p-4 bg-muted border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none text-foreground"
                       value={commentContent}
                       onChange={e => setCommentContent(e.target.value)}
                     />
                     <div className="flex items-center justify-between mt-3">
-                      <button type="button" className="p-2 text-slate-400 hover:text-indigo-600 transition-colors">
+                      <button type="button" className="p-2 text-muted-foreground hover:text-primary transition-colors">
                         <ImageIcon className="w-5 h-5" />
                       </button>
-                      <Button disabled={commentLoading || (user.role === "CITOYEN" && user.certification_status !== "APPROVED") || signalement.statut === "ENQUETE_DGDDL"} className="rounded-xl px-6 bg-indigo-600 hover:bg-indigo-700 text-white">
+                      <Button disabled={commentLoading || (user.role === "CITOYEN" && user.certification_status !== "APPROVED") || signalement.statut === "ENQUETE_DGDDL"} className="rounded-xl px-6 bg-primary hover:bg-primary/90 text-primary-foreground">
                         {commentLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Envoyer"}
                         <Send className="w-4 h-4 ml-2" />
                       </Button>
@@ -405,9 +405,9 @@ export default function SignalementDetailPage() {
                   </form>
                 </div>
         ) : (
-          <div className="bg-slate-100 p-6 rounded-2xl text-center border border-dashed border-slate-300">
-            <p className="text-slate-600">Vous devez être connecté pour participer à la discussion.</p>
-            <Button onClick={() => router.push("/login")} variant="link" className="text-indigo-600 font-bold">
+          <div className="bg-muted p-6 rounded-2xl text-center border border-dashed border-border">
+            <p className="text-muted-foreground">Vous devez être connecté pour participer à la discussion.</p>
+            <Button onClick={() => router.push("/login")} variant="link" className="text-primary font-bold">
               Se connecter
             </Button>
           </div>
@@ -420,23 +420,23 @@ export default function SignalementDetailPage() {
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
               key={comment.id} 
-              className={`p-4 rounded-2xl border border-slate-100 bg-white shadow-sm ${
-                comment.type_commentaire !== "AVIS" ? "ring-2 ring-indigo-500/10 border-indigo-100" : ""
+              className={`p-4 rounded-2xl border border-border bg-card shadow-sm ${
+                comment.type_commentaire !== "AVIS" ? "ring-2 ring-primary/10 border-primary/20" : ""
               }`}
             >
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-500">
+                  <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-bold text-muted-foreground">
                     {comment.auteur_nom?.charAt(0)}
                   </div>
-                  <span className="font-bold text-sm">{comment.auteur_nom}</span>
-                  <Badge variant="secondary" className="text-[10px] py-0 px-2 rounded-full bg-slate-50 text-slate-500">
+                  <span className="font-bold text-sm text-foreground">{comment.auteur_nom}</span>
+                  <Badge variant="secondary" className="text-[10px] py-0 px-2 rounded-full bg-muted text-muted-foreground">
                     {comment.auteur_role}
                   </Badge>
                 </div>
-                <span className="text-xs text-slate-400">{formatDateShort(comment.created_at)}</span>
+                <span className="text-xs text-muted-foreground">{formatDateShort(comment.created_at)}</span>
               </div>
-              <p className="text-slate-700 text-sm leading-relaxed">
+              <p className="text-foreground/80 text-sm leading-relaxed">
                 {comment.contenu}
               </p>
             </motion.div>
@@ -534,9 +534,9 @@ export default function SignalementDetailPage() {
             )}
 
             {/* Reputation & Community Stats */}
-            <Card className="rounded-3xl border-slate-200 shadow-xl overflow-hidden">
-              <CardHeader className="bg-slate-50 border-b border-slate-100">
-                <CardTitle className="text-sm font-bold text-slate-500 uppercase tracking-wider">Engagement Citoyen</CardTitle>
+            <Card className="rounded-3xl border-border shadow-xl overflow-hidden bg-card">
+              <CardHeader className="bg-muted/50 border-b border-border">
+                <CardTitle className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Engagement Citoyen</CardTitle>
               </CardHeader>
               <CardContent className="p-6 space-y-6">
                 <div className="grid grid-cols-2 gap-4">

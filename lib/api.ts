@@ -117,6 +117,7 @@ export interface UserProfile {
   email_verifie: boolean; is_blockchain_authorized: boolean; avatar: string; reputation_score: number;
   profession_verified: boolean; profession_verified_date: string | null;
   is_active: boolean; is_verified: boolean; is_expert: boolean; date_joined: string; telephone?: string;
+  certification_status: "PENDING" | "APPROVED" | "REJECTED";
 }
 
 export interface Engagement {
@@ -347,6 +348,7 @@ export interface Transaction {
   valide_par_detail: UserProfile | null;
   created_at: string; validated_at: string | null;
   updated_at: string;
+  corrections?: Transaction[] | null;
 }
 
 export interface TransactionListFilters {
@@ -666,7 +668,7 @@ export interface Projet {
 export const projetsApi = {
   list: (communeId?: number) => {
     const url = communeId ? `/api/communes/projets/?commune=${communeId}` : "/api/communes/projets/";
-    return apiFetch<Projet[]>(url);
+    return apiFetch<{ results: Projet[]; count: number }>(url);
   },
   getDetail: (id: string | number) => apiFetch<Projet>(`/api/communes/projets/${id}/`),
   update: (id: string | number, data: Partial<Projet>) =>
@@ -679,7 +681,7 @@ export const propositionsApi = {
     const search = new URLSearchParams();
     if (params?.commune) search.set("commune", params.commune.toString());
     if (params?.statut) search.set("statut", params.statut);
-    return apiFetch<Proposition[]>(`/api/transactions/propositions/?${search.toString()}`);
+    return apiFetch<{ results: Proposition[]; count: number }>(`/api/transactions/propositions/?${search.toString()}`);
   },
   detail: (id: string) => apiFetch<Proposition>(`/api/transactions/propositions/${id}/`),
   create: (data: Partial<Proposition>) => 

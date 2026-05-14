@@ -531,7 +531,7 @@ class PropositionListCreateView(generics.ListCreateAPIView):
         commune_id = self.request.query_params.get("commune")
         if commune_id:
             qs = qs.filter(commune_id=commune_id)
-        statut = self.request.query_params.get("statut", "ACTIVE")
+        statut = self.request.query_params.get("statut")
         if statut:
             qs = qs.filter(statut=statut)
         return qs
