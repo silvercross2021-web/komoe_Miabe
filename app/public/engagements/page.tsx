@@ -516,7 +516,7 @@ export default function EngagementsCitoyensPage() {
   );
 }
 
-function PublicationCard({ pub }: { pub: Publication }) {
+function PublicationCard({ pub, onVote }: { pub: Publication; onVote?: (type: "UP" | "DOWN") => void }) {
   const detailUrl = pub.type === "SIGNALEMENT" 
     ? `/public/engagements/signalement/${pub.id}` 
     : `/public/engagements/proposition/${pub.id}`;
@@ -529,25 +529,32 @@ function PublicationCard({ pub }: { pub: Publication }) {
       exit={{ opacity: 0, scale: 0.95 }}
       transition={{ duration: 0.2 }}
     >
-      <Link href={detailUrl}>
-        <Card className="group border-border hover:border-primary/50 transition-all shadow-sm hover:shadow-md rounded-3xl overflow-hidden bg-card">
-          <CardContent className="p-0">
-            <div className="p-5 md:p-6 flex flex-col md:flex-row gap-6">
-              {/* Interaction Left Bar */}
-              <div className="flex md:flex-col items-center justify-center gap-4 border-r md:border-r border-border pr-0 md:pr-6 md:w-16">
-                <div className="flex flex-col items-center">
-                  <button className="p-2 hover:bg-primary/10 rounded-xl text-muted-foreground hover:text-primary transition-all">
-                    <ChevronDown className="w-6 h-6 rotate-180" />
-                  </button>
-                  <span className="font-bold text-lg my-1 text-foreground">{pub.votes}</span>
-                  <button className="p-2 hover:bg-red-500/10 rounded-xl text-muted-foreground hover:text-red-500 transition-all">
-                    <ChevronDown className="w-6 h-6" />
-                  </button>
-                </div>
+      <div className="group border-border hover:border-primary/50 transition-all shadow-sm hover:shadow-md rounded-3xl overflow-hidden bg-card border relative">
+        <Link href={detailUrl} className="absolute inset-0 z-0" />
+        <div className="p-0 relative z-10 pointer-events-none">
+          <div className="p-5 md:p-6 flex flex-col md:flex-row gap-6">
+            {/* Interaction Left Bar */}
+            <div className="flex md:flex-col items-center justify-center gap-4 border-r md:border-r border-border pr-0 md:pr-6 md:w-16 pointer-events-auto">
+              <div className="flex flex-col items-center">
+                <button 
+                  onClick={(e) => { e.preventDefault(); onVote?.("UP"); }}
+                  className="p-2 hover:bg-primary/10 rounded-xl text-muted-foreground hover:text-primary transition-all"
+                >
+                  <ChevronDown className="w-6 h-6 rotate-180" />
+                </button>
+                <span className="font-bold text-lg my-1 text-foreground">{pub.votes}</span>
+                <button 
+                  onClick={(e) => { e.preventDefault(); onVote?.("DOWN"); }}
+                  className="p-2 hover:bg-red-500/10 rounded-xl text-muted-foreground hover:text-red-500 transition-all"
+                >
+                  <ChevronDown className="w-6 h-6" />
+                </button>
               </div>
+            </div>
 
-              {/* Main Content */}
-              <div className="flex-1 space-y-4">
+            {/* Main Content */}
+            <div className="flex-1 space-y-4 pointer-events-auto">
+              <Link href={detailUrl} className="block space-y-4">
                 <div className="flex flex-wrap items-center gap-3">
                   <Badge className={`rounded-full px-3 py-1 font-semibold ${
                     pub.type === "SIGNALEMENT" 
@@ -574,41 +581,40 @@ function PublicationCard({ pub }: { pub: Publication }) {
                     {pub.description}
                   </p>
                 </div>
+              </Link>
 
-                <div className="flex flex-wrap items-center justify-between gap-4 pt-2 border-t border-border mt-4">
-                  <div className="flex flex-wrap gap-2">
-                    <Badge variant="outline" className="rounded-lg gap-1 border-border text-muted-foreground">
-                      <MapPin className="w-3 h-3" />
-                      {pub.commune}
+              <div className="flex flex-wrap items-center justify-between gap-4 pt-2 border-t border-border mt-4">
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant="outline" className="rounded-lg gap-1 border-border text-muted-foreground">
+                    <MapPin className="w-3 h-3" />
+                    {pub.commune}
+                  </Badge>
+                  {pub.badges.map(b => (
+                    <Badge key={b} variant="secondary" className={`rounded-lg border-border ${
+                      b === "ENQUETE_DGDDL" ? "bg-orange-500/20 text-orange-500 animate-pulse" :
+                      b === "VALIDE_FRAUDE" ? "bg-red-500/20 text-red-500" :
+                      b === "VIRAL" ? "bg-rose-500/20 text-rose-500" :
+                      "text-muted-foreground"
+                    }`}>
+                      {b}
                     </Badge>
-                    {pub.badges.map(b => (
-                      <Badge key={b} variant="secondary" className={`rounded-lg border-border ${
-                        b === "ENQUETE_DGDDL" ? "bg-orange-500/20 text-orange-500 animate-pulse" :
-                        b === "VALIDE_FRAUDE" ? "bg-red-500/20 text-red-500" :
-                        b === "VIRAL" ? "bg-rose-500/20 text-rose-500" :
-                        "text-muted-foreground"
-                      }`}>
-                        {b}
-                      </Badge>
-                    ))}
-                  </div>
+                  ))}
+                </div>
 
-                  <div className="flex items-center gap-4 text-muted-foreground text-sm font-medium">
-                    <div className="flex items-center gap-1.5 hover:text-primary transition-colors cursor-pointer">
-                      <MessageSquare className="w-4 h-4" />
-                      {pub.commentairesCount} commentaires
-                    </div>
-                    <div className="flex items-center gap-1.5 hover:text-primary transition-colors cursor-pointer">
-                      <Share2 className="w-4 h-4" />
-                      Partager
-                    </div>
+                <div className="flex items-center gap-4 text-muted-foreground text-sm font-medium">
+                  <Link href={detailUrl} className="flex items-center gap-1.5 hover:text-primary transition-colors cursor-pointer">
+                    <MessageSquare className="w-4 h-4" />
+                    {pub.commentairesCount}
+                  </Link>
+                  <div className="flex items-center gap-1.5 hover:text-primary transition-colors cursor-pointer">
+                    <Share2 className="w-4 h-4" />
                   </div>
                 </div>
               </div>
             </div>
-          </CardContent>
-        </Card>
-      </Link>
+          </div>
+        </div>
+      </div>
     </motion.div>
   );
 }
