@@ -61,7 +61,11 @@ class TransactionSerializer(TransactionBaseSerializer):
     soumis_par_detail = UserSerializer(source="soumis_par", read_only=True)
     valide_par_detail = UserSerializer(source="valide_par", read_only=True)
     commune_detail = CommuneSerializer(source="commune", read_only=True)
-    projet_nom = serializers.ReadOnlyField(source="projet.nom", allow_null=True)
+    projet_nom = serializers.SerializerMethodField()
+
+    def get_projet_nom(self, obj):
+        return obj.projet.nom if obj.projet else None
+
     corrections = serializers.SerializerMethodField()
 
     class Meta:

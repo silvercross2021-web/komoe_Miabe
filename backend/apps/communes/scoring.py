@@ -1,7 +1,10 @@
+from django.apps import apps
 from django.db.models import Avg, Count, Sum
 
 def calculer_score_composite(commune):
-    from apps.transactions.models import Transaction, TransactionStatut, Signalement
+    Transaction = apps.get_model('transactions', 'Transaction')
+    TransactionStatut = apps.get_model('transactions', 'TransactionStatut')
+    Signalement = apps.get_model('transactions', 'Signalement')
 
     """
     Calcule un score de transparence multi-dimensionnel (0-100).

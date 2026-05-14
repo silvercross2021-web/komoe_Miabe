@@ -176,6 +176,23 @@ export default function EngagementsCitoyensPage() {
   }, [publications, filter, search]);
 
   // Handlers
+  const handleVote = async (pubId: string, voteValue: string) => {
+    if (!user) return;
+    try {
+      const pub = publications.find(p => p.id === pubId);
+      if (!pub) return;
+
+      if (pub.type === "SIGNALEMENT") {
+        await signalementsApi.voter(pubId, voteValue === "CREDIBLE" ? "CREDIBLE" : "INFONDE");
+      } else {
+        await propositionsApi.voter(pubId, voteValue === "SOUTIEN" ? "SOUTIEN" : "OPPOSITION");
+      }
+      fetchPublications();
+    } catch (err: any) {
+      console.error("Vote error:", err);
+    }
+  };
+
   const handleAddFichier = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     const validFiles = files.filter(f => f.size <= 10 * 1024 * 1024);
