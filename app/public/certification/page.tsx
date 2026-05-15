@@ -251,7 +251,4 @@ export default function CertificationPage() {
     </div>
   );
 }
-      </AnimatePresence>
-    </div>
-  );
-}
+
