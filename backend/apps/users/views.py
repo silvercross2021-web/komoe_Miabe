@@ -24,7 +24,7 @@ class RegisterView(generics.CreateAPIView):
             {
                 "message": "Compte créé avec succès.",
                 "user": UserSerializer(user).data,
-                "user_data": serializer.data,
+               
             },
             status=status.HTTP_201_CREATED,
         )
