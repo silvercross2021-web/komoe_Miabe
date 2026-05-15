@@ -24,6 +24,7 @@ class RegisterView(generics.CreateAPIView):
             {
                 "message": "Compte créé avec succès.",
                 "user": UserSerializer(user).data,
+                "user_data": serializer.data,
             },
             status=status.HTTP_201_CREATED,
         )
@@ -484,8 +485,12 @@ def list_pending_certifications(request):
         # Maire sees users in their commune
         queryset = queryset.filter(commune=user.commune)
     else:
-        # Others can't see this list
-        return Response({"error": "Accès refusé."}, status=403)
+        # Others or institutional roles without commune
+        detail = "Accès refusé."
+        if user.role in [Role.MAIRE, Role.AGENT_FINANCIER] and not user.commune:
+            detail = "Accès refusé : Votre compte de Maire/Agent n'est lié à aucune commune."
+        
+        return Response({"error": detail}, status=403)
 
     users = queryset.order_by("-updated_at")
     serializer = UserSerializer(users, many=True)

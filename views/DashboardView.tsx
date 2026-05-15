@@ -774,6 +774,7 @@ const UnifiedPublicDashboard = ({ communeId, role }: { communeId: number | null,
   // Logic: Everyone is a Citizen.
   // Verification check.
   const isVerified = user?.certification_status === 'APPROVED';
+  const isPending = user?.certification_status === 'PENDING';
   const isExpert = user?.is_expert ?? false;
 
   const commune = communeId 
@@ -790,19 +791,40 @@ const UnifiedPublicDashboard = ({ communeId, role }: { communeId: number | null,
       {!isVerified && (
         <motion.div 
           initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }}
-          className="p-4 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20 rounded-[24px] flex flex-col md:flex-row items-center justify-between gap-4 shadow-sm"
+          className={cn(
+            "p-4 border rounded-[24px] flex flex-col md:flex-row items-center justify-between gap-4 shadow-sm transition-colors",
+            isPending ? "bg-muted/50 border-border" : "bg-gradient-to-r from-amber-500/10 to-orange-500/10 border-amber-500/20"
+          )}
         >
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-amber-500/20 text-amber-500 rounded-2xl flex items-center justify-center shrink-0">
-              <ShieldAlert className="w-6 h-6" />
+            <div className={cn(
+              "w-12 h-12 rounded-2xl flex items-center justify-center shrink-0",
+              isPending ? "bg-muted text-muted-foreground" : "bg-amber-500/20 text-amber-500"
+            )}>
+              {isPending ? <Loader2 className="w-6 h-6 animate-spin" /> : <ShieldAlert className="w-6 h-6" />}
             </div>
             <div>
-              <p className="text-sm font-black text-amber-500 uppercase italic">Vérification de Sentinelle Requise</p>
-              <p className="text-xs font-medium text-amber-500/80">Pour signaler une anomalie ou accéder aux audits, certifiez votre identité numérique.</p>
+              <p className={cn("text-sm font-black uppercase italic", isPending ? "text-muted-foreground" : "text-amber-500")}>
+                {isPending ? "Certification en cours d'examen" : "Vérification de Sentinelle Requise"}
+              </p>
+              <p className="text-xs font-medium text-muted-foreground/80">
+                {isPending 
+                  ? "Votre demande est en cours de traitement par les autorités. Temps estimé : 24-48h." 
+                  : "Pour signaler une anomalie ou accéder aux audits, certifiez votre identité numérique."}
+              </p>
             </div>
           </div>
-          <Button onClick={() => router.push('/public/certification')} className="bg-amber-600 hover:bg-amber-700 text-white font-black rounded-xl h-11 px-6 shadow-lg shadow-amber-600/20">
-            Demander ma Certification →
+          <Button 
+            disabled={isPending}
+            onClick={() => router.push('/public/certification')} 
+            className={cn(
+              "font-black rounded-xl h-11 px-6 shadow-lg transition-all",
+              isPending 
+                ? "bg-transparent border border-border text-muted-foreground cursor-not-allowed" 
+                : "bg-amber-600 hover:bg-amber-700 text-white shadow-amber-600/20"
+            )}
+          >
+            {isPending ? "Validation en cours..." : "Demander ma Certification →"}
           </Button>
         </motion.div>
       )}
