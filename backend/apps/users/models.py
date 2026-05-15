@@ -90,11 +90,12 @@ class User(AbstractBaseUser, PermissionsMixin):
     certification_status = models.CharField(
         max_length=20,
         choices=[
+            ("NONE", "Non soumis"),
             ("PENDING", "En attente"),
             ("APPROVED", "Approuvé"),
             ("REJECTED", "Rejeté"),
         ],
-        default="PENDING",
+        default="NONE",
         help_text="Statut de la demande de certification Sentinelle"
     )
     certification_reviewed_by = models.ForeignKey(

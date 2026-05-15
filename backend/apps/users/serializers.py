@@ -167,7 +167,7 @@ class VerifiedUniversitySerializer(serializers.ModelSerializer):
 class CertificationSentinelleSerializer(serializers.Serializer):
     cni_numero = serializers.CharField(max_length=50, required=True)
     cni_date = serializers.DateField(required=True)
-    document = serializers.FileField(required=True)
+    document = serializers.FileField(required=False, allow_null=True)
 
     def validate_cni_numero(self, value):
         if not value or len(value.strip()) < 5:

@@ -419,9 +419,16 @@ def submit_certification_sentinelle(request):
     user = request.user
 
     # Vérifier que l'utilisateur n'a pas déjà une certification en cours
-    if user.certification_status == "PENDING":
+    # On bloque si le statut est PENDING ET qu'un numéro CNI existe déjà
+    if user.certification_status == "PENDING" and user.cni_numero:
         return Response(
             {"error": "Vous avez déjà une demande de certification en attente."},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    if user.certification_status == "APPROVED":
+        return Response(
+            {"error": "Votre compte est déjà certifié."},
             status=status.HTTP_400_BAD_REQUEST
         )
 
@@ -432,20 +439,23 @@ def submit_certification_sentinelle(request):
     user.is_blockchain_authorized = False
     user.save()
 
-    # Créer un document de certification
-    doc = ProfessionDocument.objects.create(
-        user=user,
-        profession="CITOYEN",
-        type_document="CARTE_IDENTITE",
-        nom_fichier=data["document"].name,
-        ipfs_hash="",
-        ipfs_url="",
-        status="PENDING"
-    )
+    # Créer un document de certification (si fourni)
+    doc_id = None
+    if data.get("document"):
+        doc = ProfessionDocument.objects.create(
+            user=user,
+            profession="CITOYEN",
+            type_document="CARTE_IDENTITE",
+            nom_fichier=data["document"].name,
+            ipfs_hash="",
+            ipfs_url="",
+            status="PENDING"
+        )
+        doc_id = str(doc.id)
 
     return Response({
         "message": "Demande de certification soumise avec succès.",
-        "document_id": str(doc.id),
+        "document_id": doc_id,
         "status": "PENDING",
         "estimated_verification": "24-48h"
     }, status=status.HTTP_201_CREATED)
@@ -460,10 +470,11 @@ def list_pending_certifications(request):
     
     user = request.user
     
-    # Base query: users with CNI submitted
+    # Base query: users with CNI submitted AND status is PENDING
     queryset = User.objects.filter(
-        Q(cni_numero__isnull=False) & ~Q(cni_numero="")
-    )
+        certification_status="PENDING",
+        cni_numero__isnull=False
+    ).exclude(cni_numero="")
 
     # Filtering logic
     if user.role == Role.DGDDL:

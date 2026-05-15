@@ -29,15 +29,13 @@ export default function CertificationPage() {
     setIsSubmitting(true);
     setError(null);
 
-    if (!form.document) {
-      setError("Veuillez sélectionner un fichier.");
-      setIsSubmitting(false);
-      return;
-    }
-
     try {
-      await authApi.submitCertification(form.cni_numero, form.cni_date, form.document);
+      await authApi.submitCertification(form.cni_numero, form.cni_date, form.document || undefined as any);
       setStep("success");
+      // Redirection automatique après 3 secondes
+      setTimeout(() => {
+        router.push("/public/dashboard");
+      }, 3000);
     } catch (err) {
       const errorMsg = (err as ApiError).message || "Erreur lors de la soumission.";
       setError(errorMsg);
@@ -72,7 +70,7 @@ export default function CertificationPage() {
             </div>
           ))}
           <span className="ml-2 text-xs font-bold text-muted-foreground uppercase tracking-widest">
-            {step === "intro" ? "Présentation" : step === "identity" ? "Votre Identité" : "Document"}
+            {step === "intro" ? "Présentation" : step === "identity" ? "Votre Identité" : "Document (Optionnel)"}
           </span>
         </div>
       )}
@@ -180,7 +178,7 @@ export default function CertificationPage() {
             <form onSubmit={handleSubmit}>
               <Card>
                 <CardContent className="p-8 space-y-6">
-                  <h2 className="font-black text-xl">Téléversez votre document</h2>
+                  <h2 className="font-black text-xl">Téléversez votre document (Optionnel)</h2>
 
                   <div
                     className="border-2 border-dashed border-border rounded-2xl p-10 text-center space-y-4 cursor-pointer hover:border-primary/40 hover:bg-primary/5 transition-all"
@@ -199,7 +197,7 @@ export default function CertificationPage() {
                     />
                     <Upload className="w-10 h-10 text-muted-foreground mx-auto" />
                     <div>
-                      <p className="font-black text-sm">{form.document ? form.document.name : "Photo de votre CNI recto/verso"}</p>
+                      <p className="font-black text-sm">{form.document ? form.document.name : "Photo de votre CNI recto/verso (Optionnel)"}</p>
                       {form.document && <p className="text-xs text-emerald-600 mt-1">✓ Fichier sélectionné</p>}
                       {!form.document && <p className="text-xs text-muted-foreground mt-1">JPG, PNG ou PDF — Max 5 Mo</p>}
                     </div>
@@ -237,7 +235,7 @@ export default function CertificationPage() {
               <h2 className="text-3xl font-black mb-3">Demande Soumise !</h2>
               <p className="text-muted-foreground text-sm font-medium max-w-sm mx-auto leading-relaxed">
                 Votre demande de certification Sentinelle a été enregistrée.
-                Vous recevrez une notification par email dans 24–48h.
+                Redirection vers le tableau de bord dans quelques secondes...
               </p>
             </div>
             <div className="p-4 bg-primary/5 border border-primary/20 rounded-2xl max-w-sm mx-auto">
@@ -245,10 +243,14 @@ export default function CertificationPage() {
               <p className="text-sm text-muted-foreground mt-1">Consulter les budgets publics et suivre les transactions validées.</p>
             </div>
             <Button onClick={() => router.push("/public/dashboard")} className="h-12 px-10 font-black">
-              Retour au Dashboard
+              Aller au Dashboard maintenant
             </Button>
           </motion.div>
         )}
+      </AnimatePresence>
+    </div>
+  );
+}
       </AnimatePresence>
     </div>
   );
