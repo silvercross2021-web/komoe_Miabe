@@ -48,6 +48,7 @@ const NAV_CONTROLE: NavItem[] = [
 
 const NAV_COMMUNE: NavItem[] = [
   { name: 'Tableau de bord',         href: '/commune/dashboard',    icon: LayoutDashboard },
+  { name: 'Validation Sentinelle',   href: '/controle/certification', icon: ShieldCheck,     onlyFor: ['MAIRE', 'AGENT_FINANCIER'] },
   { name: 'Saisies Financières',     href: '/commune/saisies',      icon: Receipt,        onlyFor: ['AGENT_FINANCIER', 'MAIRE'] },
   { name: 'Gestion des Projets',     href: '/commune/projets',      icon: Building2 },
   { name: 'Budget Participatif',     href: '/commune/engagements',  icon: CheckCircle },

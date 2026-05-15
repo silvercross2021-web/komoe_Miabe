@@ -207,8 +207,8 @@ export default function ProfilPublic() {
 
             <div className="flex items-center justify-between p-4 bg-muted/20 rounded-[16px] border border-border">
               <span className="text-sm font-bold text-foreground">Identité KYC</span>
-              <Badge variant={user.reputation_score > 50 ? "success" : "secondary"} className="font-bold">
-                {user.reputation_score > 50 ? "VÉRIFIÉE" : "EN ATTENTE"}
+              <Badge variant={user.certification_status === "APPROVED" ? "success" : user.certification_status === "REJECTED" ? "destructive" : "secondary"} className="font-bold">
+                {user.certification_status === "APPROVED" ? "VÉRIFIÉE" : user.certification_status === "REJECTED" ? "REJETÉE" : "EN ATTENTE"}
               </Badge>
             </div>
           </div>

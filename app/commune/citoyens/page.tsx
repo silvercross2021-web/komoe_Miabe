@@ -13,7 +13,7 @@ export default function CitoyensCommune() {
   
   // On filtre pour ne garder que les citoyens (le backend a déjà filtré par commune)
   const citoyens = allUsers.filter(u => u.role === 'CITOYEN');
-  const verifies = citoyens.filter(u => u.reputation_score > 50).length; // Simulation de vérification via score
+  const verifies = citoyens.filter(u => u.certification_status === 'APPROVED').length;
 
   const columns: ColumnConfig<any>[] = [
     { 
@@ -48,20 +48,35 @@ export default function CitoyensCommune() {
     },
     {
       header: 'Statut KYC',
-      key: 'journaliste_verifie',
-      render: (_, item) => (
-        <Badge variant={item.reputation_score > 50 ? 'success' : 'secondary'} className="rounded-full px-3 font-bold">
-          {item.reputation_score > 50 ? 'VÉRIFIÉ' : 'EN ATTENTE'}
-        </Badge>
-      )
+      key: 'certification_status',
+      render: (_, item) => {
+        const status = item.certification_status || 'PENDING';
+        return (
+          <Badge 
+            variant={status === 'APPROVED' ? 'success' : status === 'REJECTED' ? 'destructive' : 'secondary'} 
+            className="rounded-full px-3 font-bold"
+          >
+            {status === 'APPROVED' ? 'VÉRIFIÉ' : status === 'REJECTED' ? 'REJETÉ' : 'EN ATTENTE'}
+          </Badge>
+        );
+      }
     },
     {
       header: 'Actions',
       key: 'actions',
       render: (_, item) => (
-        <Link href={`/commune/citoyens/${item.id}`}>
-          <Button variant="ghost" size="sm" className="font-bold hover:text-primary rounded-xl">Consulter</Button>
-        </Link>
+        <div className="flex gap-2">
+          <Link href={`/commune/citoyens/${item.id}`}>
+            <Button variant="ghost" size="sm" className="font-bold hover:text-primary rounded-xl">Consulter</Button>
+          </Link>
+          {item.certification_status === 'PENDING' && (
+            <Link href="/controle/certification">
+              <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl h-8">
+                Valider
+              </Button>
+            </Link>
+          )}
+        </div>
       )
     }
   ];

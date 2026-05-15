@@ -452,18 +452,31 @@ def submit_certification_sentinelle(request):
 
 
 @api_view(["GET"])
-@permission_classes([IsDGDDL])
+@permission_classes([IsAuthenticated])
 def list_pending_certifications(request):
-    """DGDDL: Lister toutes les demandes de certification Sentinelle."""
+    """Lister les demandes de certification Sentinelle (DGDDL national, Maire local)."""
     from .serializers import UserSerializer
     from django.db.models import Q
-
-    # Récupérer tous les utilisateurs qui ont soumis une demande de certification
-    # (peu importe le statut: PENDING, APPROVED, REJECTED)
-    users = User.objects.filter(
+    
+    user = request.user
+    
+    # Base query: users with CNI submitted
+    queryset = User.objects.filter(
         Q(cni_numero__isnull=False) & ~Q(cni_numero="")
-    ).order_by("-updated_at")
+    )
 
+    # Filtering logic
+    if user.role == Role.DGDDL:
+        # DGDDL sees everything
+        pass
+    elif user.role in [Role.MAIRE, Role.AGENT_FINANCIER] and user.commune:
+        # Maire sees users in their commune
+        queryset = queryset.filter(commune=user.commune)
+    else:
+        # Others can't see this list
+        return Response({"error": "Accès refusé."}, status=403)
+
+    users = queryset.order_by("-updated_at")
     serializer = UserSerializer(users, many=True)
 
     return Response({
@@ -473,17 +486,30 @@ def list_pending_certifications(request):
 
 
 @api_view(["PATCH"])
-@permission_classes([IsDGDDL])
+@permission_classes([IsAuthenticated])
 def review_certification_sentinelle(request, user_id):
-    """DGDDL: Approuver ou rejeter une demande de certification Sentinelle."""
+    """DGDDL ou Maire : Approuver ou rejeter une demande de certification Sentinelle."""
     from django.utils import timezone
 
     try:
-        user = User.objects.get(id=user_id)
+        target_user = User.objects.get(id=user_id)
     except User.DoesNotExist:
         return Response({"error": "Utilisateur introuvable."}, status=404)
 
-    if user.certification_status != "PENDING":
+    # Permission check
+    requester = request.user
+    can_review = False
+
+    if requester.role == Role.DGDDL:
+        can_review = True
+    elif requester.role in [Role.MAIRE, Role.AGENT_FINANCIER] and requester.commune:
+        if target_user.commune == requester.commune:
+            can_review = True
+
+    if not can_review:
+        return Response({"error": "Vous n'avez pas l'autorisation de valider cet utilisateur."}, status=403)
+
+    if target_user.certification_status != "PENDING":
         return Response(
             {"error": "Cette demande de certification n'est pas en attente de vérification."},
             status=400
@@ -494,19 +520,19 @@ def review_certification_sentinelle(request, user_id):
         return Response({"error": "Action must be 'approve' or 'reject'."}, status=400)
 
     if action == "approve":
-        user.certification_status = "APPROVED"
-        user.is_blockchain_authorized = True
+        target_user.certification_status = "APPROVED"
+        target_user.is_blockchain_authorized = True
     else:  # reject
-        user.certification_status = "REJECTED"
-        user.is_blockchain_authorized = False
+        target_user.certification_status = "REJECTED"
+        target_user.is_blockchain_authorized = False
 
-    user.certification_reviewed_by = request.user
-    user.certification_reviewed_date = timezone.now()
-    user.save(update_fields=["certification_status", "is_blockchain_authorized", "certification_reviewed_by", "certification_reviewed_date"])
+    target_user.certification_reviewed_by = requester
+    target_user.certification_reviewed_date = timezone.now()
+    target_user.save(update_fields=["certification_status", "is_blockchain_authorized", "certification_reviewed_by", "certification_reviewed_date"])
 
     return Response({
         "message": f"Certification {action}d avec succès.",
-        "user_id": str(user.id),
-        "status": user.certification_status,
-        "is_blockchain_authorized": user.is_blockchain_authorized
+        "user_id": str(target_user.id),
+        "status": target_user.certification_status,
+        "is_blockchain_authorized": target_user.is_blockchain_authorized
     })

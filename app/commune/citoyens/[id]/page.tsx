@@ -81,14 +81,21 @@ export default function CitoyenDetailPage() {
                   <span className="flex items-center gap-1.5"><Calendar size={14} className="text-primary" /> Inscrit le {formatDateShort(citoyen.date_joined)}</span>
                 </div>
               </div>
-              <div className="flex flex-col items-end gap-3">
-                 <Badge variant={citoyen.reputation_score > 50 ? "success" : "warning"} className="h-10 px-6 rounded-2xl font-black text-xs shadow-xl shadow-primary/5">
-                   {citoyen.reputation_score > 50 ? "IDENTITÉ VÉRIFIÉE (KYC)" : "EN ATTENTE DE VÉRIFICATION"}
-                 </Badge>
-                 <div className="flex items-center gap-2 text-[10px] font-black text-muted-foreground uppercase tracking-tighter italic">
-                   ID: {citoyen.id.slice(0, 12)}...
-                 </div>
-              </div>
+               <div className="flex flex-col items-end gap-3">
+                  <Badge variant={citoyen.certification_status === "APPROVED" ? "success" : citoyen.certification_status === "REJECTED" ? "destructive" : "warning"} className="h-10 px-6 rounded-2xl font-black text-xs shadow-xl shadow-primary/5">
+                    {citoyen.certification_status === "APPROVED" ? "IDENTITÉ VÉRIFIÉE (KYC)" : citoyen.certification_status === "REJECTED" ? "IDENTITÉ REJETÉE" : "EN ATTENTE DE VÉRIFICATION"}
+                  </Badge>
+                  {citoyen.certification_status === "PENDING" && (
+                    <Link href="/controle/certification">
+                      <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-lg shadow-emerald-500/20">
+                        Valider l'Identité
+                      </Button>
+                    </Link>
+                  )}
+                  <div className="flex items-center gap-2 text-[10px] font-black text-muted-foreground uppercase tracking-tighter italic">
+                    ID: {citoyen.id.slice(0, 12)}...
+                  </div>
+               </div>
             </div>
           </div>
 
