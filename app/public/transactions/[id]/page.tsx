@@ -3,7 +3,8 @@
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
-import { ExternalLink, ArrowLeft, FileText, CheckCircle2, Loader2, Globe, Lock } from "lucide-react";
+import { ExternalLink, ArrowLeft, FileText, CheckCircle2, Loader2, Globe, Lock, Copy, Check } from "lucide-react";
+import { useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useTransactionDetail } from "@/lib/hooks/useTransactions";
@@ -13,6 +14,24 @@ import { formatFCFA, formatDateShort, polygonscanTxUrl, ipfsFileUrl, stripHtml }
  * Page de détail d'une transaction pour le grand public.
  * Affiche les preuves blockchain et les justificatifs IPFS.
  */
+const CopyButton = ({ text, className }: { text: string; className?: string }) => {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+  return (
+    <button 
+      onClick={handleCopy} 
+      className={`p-1.5 hover:bg-muted rounded-lg transition-colors text-muted-foreground hover:text-brand-orange ${className}`}
+      title="Copier"
+    >
+      {copied ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
+    </button>
+  );
+};
+
 export default function PublicTransactionDetailPage() {
   const params = useParams();
   const id = params.id as string;
@@ -56,7 +75,10 @@ export default function PublicTransactionDetailPage() {
             <h2 className="text-3xl font-black text-foreground tracking-tight uppercase italic">Preuve Citoyenne</h2>
             <Badge variant="success" className="rounded-lg px-4 h-8 font-black uppercase text-[10px]">SCÉLLÉ BLOCKCHAIN</Badge>
           </div>
-          <p className="text-muted-foreground font-mono text-xs bg-muted/50 px-3 py-1 rounded-lg inline-block border border-border">TRANSACTION ID: {tx.id}</p>
+          <div className="flex items-center gap-2 text-muted-foreground font-mono text-xs bg-muted/50 px-3 py-1 rounded-lg border border-border">
+            <span>TRANSACTION ID: {tx.id}</span>
+            <CopyButton text={tx.id} />
+          </div>
         </div>
         <div className="flex gap-3">
           {tx.blockchain_tx_hash_validation && (
@@ -112,8 +134,16 @@ export default function PublicTransactionDetailPage() {
                 <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-3 flex items-center gap-2">
                    <Globe className="w-4 h-4 text-brand-orange" /> Empreinte Cryptographique
                 </p>
-                <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl font-mono text-[11px] text-emerald-400 break-all shadow-inner relative group">
+                <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl font-mono text-[11px] text-emerald-400 break-all shadow-inner relative group/hash">
                   {tx.blockchain_tx_hash_validation || tx.blockchain_tx_hash_soumission || "Non disponible"}
+                  {(tx.blockchain_tx_hash_validation || tx.blockchain_tx_hash_soumission) && (
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                      <CopyButton 
+                        text={tx.blockchain_tx_hash_validation || tx.blockchain_tx_hash_soumission || ""} 
+                        className="bg-slate-800/50 border border-slate-700 hover:bg-slate-800"
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -130,8 +160,11 @@ export default function PublicTransactionDetailPage() {
                     <div className="p-3 bg-brand-orange/10 text-brand-orange rounded-xl group-hover:bg-brand-orange group-hover:text-white transition-all">
                       <FileText size={24} />
                     </div>
-                    <div className="min-w-0">
-                      <p className="text-xs font-black text-foreground truncate uppercase italic">Document Source</p>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-black text-foreground truncate uppercase italic">Document Source</p>
+                        <CopyButton text={tx.ipfs_hash} />
+                      </div>
                       <p className="text-[9px] text-muted-foreground font-mono truncate">{tx.ipfs_hash}</p>
                     </div>
                   </div>

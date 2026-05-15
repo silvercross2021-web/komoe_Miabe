@@ -17,7 +17,7 @@ export interface Projet {
   created_at: string;
 }
 
-export function useProjets() {
+export function useProjets(communeId?: number) {
   const [projets, setProjets] = useState<Projet[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -26,22 +26,31 @@ export function useProjets() {
     setLoading(true);
     setError(null);
     try {
-      // On assume que authApi aura une méthode pour les projets ou on utilise fetch directement
       const token = localStorage.getItem('token');
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/communes/projets/`, {
+      const url = new URL(`${process.env.NEXT_PUBLIC_API_URL}/communes/projets/`);
+      if (communeId) {
+        url.searchParams.append('commune', communeId.toString());
+      }
+
+      const res = await fetch(url.toString(), {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
-      if (!res.ok) throw new Error("Erreur lors de la récupération des projets");
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.detail || "Erreur lors de la récupération des projets");
+      }
+      
       const data = await res.json();
-      setProjets(data.results ?? []);
+      setProjets(data.results ?? (Array.isArray(data) ? data : []));
     } catch (err: any) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [communeId]);
 
   useEffect(() => {
     fetchData();

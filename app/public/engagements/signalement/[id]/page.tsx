@@ -38,6 +38,7 @@ export default function SignalementDetailPage() {
   const [loading, setLoading] = useState(true);
   const [commentLoading, setCommentLoading] = useState(false);
   const [commentContent, setCommentContent] = useState("");
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [commentError, setCommentError] = useState<string | null>(null);
 
   const fetchData = async () => {
@@ -114,11 +115,48 @@ export default function SignalementDetailPage() {
       return alert("Votre compte doit être certifié Sentinelle pour voter.");
     }
 
+    if (!signalement) return;
+
+    // Sauvegarde de l'ancien état pour rollback en cas d'erreur
+    const oldSignalement = { ...signalement };
+
+    // Mise à jour optimiste
+    const newSignalement = { ...signalement };
+    const oldVote = signalement.mon_vote;
+
+    if (oldVote === type) {
+      // Si l'utilisateur clique sur le même vote, on pourrait envisager d'annuler
+      // mais l'API actuelle semble forcer un verdict. On laisse tel quel pour l'instant
+      // ou on peut ignorer pour éviter des appels inutiles.
+      return;
+    }
+
+    // Ajustement des compteurs
+    if (type === "CREDIBLE") {
+      newSignalement.nb_credibles += 1;
+      if (oldVote === "INFONDE") newSignalement.nb_infondes -= 1;
+    } else {
+      newSignalement.nb_infondes += 1;
+      if (oldVote === "CREDIBLE") newSignalement.nb_credibles -= 1;
+    }
+
+    // Recalcul des stats globales
+    newSignalement.nb_votes = newSignalement.nb_credibles + newSignalement.nb_infondes;
+    newSignalement.pct_credible = newSignalement.nb_votes > 0 
+      ? Math.round((newSignalement.nb_credibles / newSignalement.nb_votes) * 100) 
+      : 0;
+    newSignalement.mon_vote = type;
+
+    setSignalement(newSignalement);
+
     try {
       await signalementsApi.voter(id as string, type);
-      fetchData();
+      // On re-fetch quand même pour être sûr d'avoir les données exactes du serveur
+      const freshData = await signalementsApi.detail(id as string);
+      setSignalement(freshData);
     } catch (err: any) {
-      alert(err.message);
+      setSignalement(oldSignalement);
+      alert(err.message || "Erreur lors du vote");
     }
   };
 
@@ -130,11 +168,19 @@ export default function SignalementDetailPage() {
     setCommentLoading(true);
     setCommentError(null);
     try {
+      let imageUrl = "";
+      if (selectedImage) {
+        const cid = await ipfsService.uploadFile(selectedImage);
+        imageUrl = `https://ipfs.io/ipfs/${cid}`;
+      }
+
       await signalementsApi.ajouterCommentaire(id as string, {
         contenu: commentContent,
-        type_commentaire: commentType
+        type_commentaire: commentType,
+        image_url: imageUrl
       });
       setCommentContent("");
+      setSelectedImage(null);
       setCommentType("AVIS");
       fetchData();
     } catch (err: any) {
@@ -393,9 +439,29 @@ export default function SignalementDetailPage() {
                       onChange={e => setCommentContent(e.target.value)}
                     />
                     <div className="flex items-center justify-between mt-3">
-                      <button type="button" className="p-2 text-muted-foreground hover:text-primary transition-colors">
+                      <input 
+                        type="file" 
+                        id="image-comment" 
+                        accept="image/*" 
+                        className="hidden" 
+                        onChange={(e) => setSelectedImage(e.target.files?.[0] || null)}
+                      />
+                      <label 
+                        htmlFor="image-comment"
+                        className="p-2 text-muted-foreground hover:text-primary transition-colors cursor-pointer"
+                      >
                         <ImageIcon className="w-5 h-5" />
-                      </button>
+                      </label>
+                      
+                      {selectedImage && (
+                        <div className="flex items-center gap-2 bg-muted px-3 py-1 rounded-lg border border-border">
+                          <ImageIcon className="w-4 h-4 text-primary" />
+                          <span className="text-xs truncate max-w-[150px]">{selectedImage.name}</span>
+                          <button type="button" onClick={() => setSelectedImage(null)} className="text-rose-500 hover:text-rose-600">
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
                       <Button disabled={commentLoading || (user.role === "CITOYEN" && user.certification_status !== "APPROVED") || signalement.statut === "ENQUETE_DGDDL"} className="rounded-xl px-6 bg-primary hover:bg-primary/90 text-primary-foreground">
                         {commentLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Envoyer"}
                         <Send className="w-4 h-4 ml-2" />
@@ -436,9 +502,14 @@ export default function SignalementDetailPage() {
                 </div>
                 <span className="text-xs text-muted-foreground">{formatDateShort(comment.created_at)}</span>
               </div>
-              <p className="text-foreground/80 text-sm leading-relaxed">
+              <p className="text-foreground/80 text-sm leading-relaxed mb-3">
                 {comment.contenu}
               </p>
+              {comment.image_url && (
+                <div className="mt-3 rounded-xl overflow-hidden border border-border max-w-sm">
+                  <img src={comment.image_url} alt="Preuve commentaire" className="w-full h-auto object-cover hover:scale-105 transition-transform duration-500" />
+                </div>
+              )}
             </motion.div>
           ))}
           {signalement.commentaires?.length === 0 && (
@@ -540,34 +611,59 @@ export default function SignalementDetailPage() {
               </CardHeader>
               <CardContent className="p-6 space-y-6">
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-indigo-50 p-4 rounded-2xl text-center">
-                    <p className="text-2xl font-black text-indigo-600">{signalement.nb_votes}</p>
-                    <p className="text-[10px] font-bold text-indigo-400 uppercase">Votes</p>
+                  <div className="bg-indigo-50 dark:bg-indigo-500/10 p-4 rounded-2xl text-center border border-indigo-100 dark:border-indigo-500/20">
+                    <p className="text-3xl font-black text-indigo-600 dark:text-indigo-400">{signalement.nb_votes}</p>
+                    <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest">Votes</p>
                   </div>
-                  <div className="bg-orange-50 p-4 rounded-2xl text-center">
-                    <p className="text-2xl font-black text-orange-600">{signalement.pct_credible}%</p>
-                    <p className="text-[10px] font-bold text-orange-400 uppercase">Fiabilité</p>
+                  <div className="bg-orange-50 dark:bg-orange-500/10 p-4 rounded-2xl text-center border border-orange-100 dark:border-orange-500/20">
+                    <p className="text-3xl font-black text-orange-600 dark:text-orange-400">{signalement.pct_credible}%</p>
+                    <p className="text-[10px] font-bold text-orange-400 uppercase tracking-widest">Fiabilité</p>
                   </div>
                 </div>
 
-                <div className="flex gap-2">
+                <div className="grid grid-cols-2 gap-3 pt-2">
+                  <div className="flex items-center justify-center gap-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                    <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                    {signalement.nb_credibles} Crédibles
+                  </div>
+                  <div className="flex items-center justify-center gap-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                    <div className="w-2 h-2 rounded-full bg-rose-500" />
+                    {signalement.nb_infondes} Infondés
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
                   <Button 
                     onClick={() => handleVote("CREDIBLE")}
                     disabled={user?.role === "CITOYEN" && user?.certification_status !== "APPROVED"}
-                    className="flex-1 h-14 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-200"
+                    className={`flex-1 h-14 rounded-2xl border-2 transition-all ${
+                      signalement.mon_vote === "CREDIBLE" 
+                        ? "bg-emerald-600 border-emerald-600 text-white shadow-lg shadow-emerald-200" 
+                        : "bg-white dark:bg-slate-900 border-emerald-600/20 text-emerald-600 hover:bg-emerald-50"
+                    }`}
                   >
-                    <ThumbsUp className="w-5 h-5 mr-2" />
+                    <ThumbsUp className={`w-5 h-5 mr-2 ${signalement.mon_vote === "CREDIBLE" ? "text-white" : "text-emerald-600"}`} />
                     Crédible
                   </Button>
                   <Button 
                     onClick={() => handleVote("INFONDE")}
                     disabled={user?.role === "CITOYEN" && user?.certification_status !== "APPROVED"}
-                    className="flex-1 h-14 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white shadow-lg shadow-rose-200"
+                    className={`flex-1 h-14 rounded-2xl border-2 transition-all ${
+                      signalement.mon_vote === "INFONDE" 
+                        ? "bg-rose-600 border-rose-600 text-white shadow-lg shadow-rose-200" 
+                        : "bg-white dark:bg-slate-900 border-rose-600/20 text-rose-600 hover:bg-rose-50"
+                    }`}
                   >
-                    <ThumbsDown className="w-5 h-5 mr-2" />
+                    <ThumbsDown className={`w-5 h-5 mr-2 ${signalement.mon_vote === "INFONDE" ? "text-white" : "text-rose-600"}`} />
                     Infondé
                   </Button>
                 </div>
+
+                {signalement.mon_vote && (
+                  <p className="text-center text-[10px] font-black text-primary uppercase tracking-widest animate-pulse">
+                    Merci pour votre vote citoyen !
+                  </p>
+                )}
               </CardContent>
             </Card>
           </div>

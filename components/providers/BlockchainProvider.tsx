@@ -12,7 +12,7 @@ import { polygonAmoy } from 'wagmi/chains';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useTheme } from 'next-themes';
 import '@rainbow-me/rainbowkit/styles.css';
-import { useAccount, useConnect } from 'wagmi';
+import { REOWN_PROJECT_ID } from '@/lib/constants';
 
 // Création du client Query pour TanStack
 const queryClient = new QueryClient();
@@ -20,7 +20,7 @@ const queryClient = new QueryClient();
 // Configuration de Wagmi et RainbowKit
 const config = getDefaultConfig({
   appName: 'KOMOE',
-  projectId: '04309ed1007e15d0f65d1a869d8d475a',
+  projectId: REOWN_PROJECT_ID,
   chains: [polygonAmoy],
   transports: {
     [polygonAmoy.id]: http(process.env.NEXT_PUBLIC_ALCHEMY_RPC_URL || "https://rpc-amoy.polygon.technology"),

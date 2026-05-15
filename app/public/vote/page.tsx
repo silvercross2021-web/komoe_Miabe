@@ -21,6 +21,9 @@ const STATUT_CONFIG = {
   REJETEE: { label: "Rejetée", color: "bg-rose-500/10 text-rose-700 border-rose-500/20" },
   EXPIREE: { label: "Expirée", color: "bg-muted text-muted-foreground border-border" },
   CONVERTIE: { label: "Convertie", color: "bg-purple-500/10 text-purple-700 border-purple-500/20" },
+  SUGGESTION: { label: "En attente", color: "bg-amber-500/10 text-amber-700 border-amber-500/20" },
+  OFFICIELLE: { label: "Engagement Maire", color: "bg-blue-500/10 text-blue-700 border-blue-500/20" },
+  APPROUVEE: { label: "Projet Adopté", color: "bg-emerald-600 text-white border-emerald-700" },
 } as const;
 
 export default function VotePage() {
@@ -98,7 +101,15 @@ export default function VotePage() {
       setFormData({ commune: "", titre: "", description: "", categorie: "INFRASTRUCTURE", budget: "" });
       fetchPropositions();
     } catch (err: any) {
-      alert(err?.message || "Erreur lors de la soumission");
+      console.error("Submit error:", err);
+      let msg = err.message || "Erreur lors de la soumission";
+      if (err.data && typeof err.data === 'object') {
+        const firstError = Object.entries(err.data)[0];
+        if (firstError) {
+          msg = `${firstError[0]}: ${Array.isArray(firstError[1]) ? firstError[1][0] : firstError[1]}`;
+        }
+      }
+      alert(msg);
     } finally {
       setSubmitting(false);
     }
@@ -168,7 +179,7 @@ export default function VotePage() {
                   <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Catégorie *</label>
                   <select required value={formData.categorie} onChange={e => setFormData(p => ({ ...p, categorie: e.target.value }))}
                     className="w-full bg-muted/50 border border-border rounded-xl px-4 h-12 text-sm font-medium outline-none focus:ring-2 focus:ring-primary">
-                    {["INFRASTRUCTURE", "SANTE", "EDUCATION", "EAU_ASSAINISSEMENT", "SECURITE", "AGRICULTURE", "CULTURE_SPORT", "AUTRE"].map(c => (
+                    {["INFRASTRUCTURE", "SANTE", "EDUCATION", "EAU_ASSAINISSEMENT", "SECURITE", "AGRICULTURE", "CULTURE_SPORT", "ENVIRONNEMENT", "SOCIAL", "AUTRE"].map(c => (
                       <option key={c} value={c}>{c.replace("_", " & ")}</option>
                     ))}
                   </select>

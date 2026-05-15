@@ -617,8 +617,8 @@ const DGDDLDashboard = () => {
 };
 
 // ─── COMPOSANT : MODULE BAILLEUR (Extension Audit) ───────────────────────────
-const BailleurModule = ({ verified }: { verified: boolean }) => {
-  const { projets, loading } = useProjets();
+const BailleurModule = ({ verified, communeId }: { verified: boolean, communeId: number | null }) => {
+  const { projets, loading } = useProjets(communeId ?? undefined);
   
   const totalInvesti = projets.reduce((s: number, p: any) => s + p.budget_alloue_fcfa, 0);
   const avgExec = projets.length > 0 ? projets.reduce((s: number, p: any) => s + p.taux_execution, 0) / projets.length : 0;
@@ -731,7 +731,7 @@ const CourComptesDashboard = () => {
             {transactions.map((tx, idx) => (
               <div key={`${tx.id}-${idx}`} className="p-5 hover:bg-muted/50 transition-colors grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
                 <div className="md:col-span-4">
-                  <p className="font-bold text-foreground truncate">{tx.description}</p>
+                  <p className="font-bold text-foreground truncate">{stripHtml(tx.description)}</p>
                   <p className="text-[10px] font-bold text-muted-foreground uppercase mt-1">{tx.categorie} · {formatDateShort(tx.validated_at ?? tx.created_at)}</p>
                 </div>
                 <div className="md:col-span-2">
@@ -773,10 +773,12 @@ const UnifiedPublicDashboard = ({ communeId, role }: { communeId: number | null,
 
   // Logic: Everyone is a Citizen.
   // Verification check.
-  const isVerified = user?.is_blockchain_authorized ?? false;
+  const isVerified = user?.certification_status === 'APPROVED';
   const isExpert = user?.is_expert ?? false;
 
-  const commune = communeId ? communes.find(c => c.id === communeId) ?? communes[0] : communes[0];
+  const commune = communeId 
+    ? (communes.find(c => Number(c.id) === Number(communeId)) ?? communes[0]) 
+    : communes[0];
   const { transactions, loading, error } = useTransactionsList(commune ? { commune: commune.id } : undefined);
 
   if (lcLoading || loading) return <LoadingState />;
@@ -864,7 +866,7 @@ const UnifiedPublicDashboard = ({ communeId, role }: { communeId: number | null,
         <div className="lg:col-span-8 space-y-10">
           
           {/* Conditional Modules: role OR profession determines which module to show */}
-          {(role === 'BAILLEUR' || user?.profession === 'BAILLEUR') && <BailleurModule verified={isVerified} />}
+          {(role === 'BAILLEUR' || user?.profession === 'BAILLEUR') && <BailleurModule verified={isVerified} communeId={communeId} />}
           {(role === 'JOURNALISTE' || user?.profession === 'JOURNALISTE' || user?.profession === 'ONG') && <PresseModule verified={isVerified} />}
 
           <div className="space-y-4">

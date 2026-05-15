@@ -640,6 +640,7 @@ def rendre_proposition_officielle(request, pk):
     proposition.is_official = True
     proposition.statut = "OFFICIELLE"
     proposition.maire_signature_hash = tx_hash
+    proposition.budget_alloue_fcfa = request.data.get("budget_alloue_fcfa", proposition.budget_demande_fcfa)
     proposition.date_passage_officiel = timezone.now()
     # Période de vote officielle de 30 jours par défaut
     proposition.deadline_vote_officiel = timezone.now() + timedelta(days=30)
@@ -699,7 +700,7 @@ def cloturer_vote_officiel(request, pk):
             commune=proposition.commune,
             nom=proposition.titre,
             description=proposition.description,
-            budget_alloue_fcfa=proposition.budget_demande_fcfa,
+            budget_alloue_fcfa=proposition.budget_alloue_fcfa or proposition.budget_demande_fcfa,
             parent_proposition=proposition,
             statut="EN_ATTENTE" # Sera activé par l'Agent Financier
         )
@@ -888,9 +889,10 @@ def lancer_enquete_signalement(request, pk):
     )
 
     # Notifier Maire
-    if signalement.commune.maire:
+    maire = User.objects.filter(commune=signalement.commune, role="MAIRE").first()
+    if maire:
         notify_user(
-            signalement.commune.maire,
+            maire,
             "🔍 Enquête DGDDL Lancée",
             f"Une enquête est lancée sur : {signalement.sujet}",
             "SIGNALEMENT"
@@ -1053,16 +1055,17 @@ def resoudre_enquete_signalement(request, pk):
     )
 
     # Sanction Maire si fraude avérée dans sa commune
-    if resolution == "FRAUDE" and signalement.commune.maire:
-        maire = signalement.commune.maire
-        maire.reputation_score = max(0, (maire.reputation_score or 0) - 20)
-        maire.save(update_fields=["reputation_score"])
-        notify_user(
-            maire,
-            "⚖️ Fraude Confirmée dans votre Commune",
-            f"L'enquête DGDDL a confirmé une fraude. Votre score de réputation a été impacté.",
-            "SIGNALEMENT"
-        )
+    if resolution == "FRAUDE":
+        maire = User.objects.filter(commune=signalement.commune, role="MAIRE").first()
+        if maire:
+            maire.reputation_score = max(0, (maire.reputation_score or 0) - 20)
+            maire.save(update_fields=["reputation_score"])
+            notify_user(
+                maire,
+                "⚖️ Fraude Confirmée dans votre Commune",
+                f"L'enquête DGDDL a confirmé une fraude. Votre score de réputation a été impacté.",
+                "SIGNALEMENT"
+            )
 
     # Notifier tous les votants
     for vote in signalement.votes.all():

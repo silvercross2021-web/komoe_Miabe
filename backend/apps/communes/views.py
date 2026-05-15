@@ -85,6 +85,12 @@ class ProjetListView(generics.ListCreateAPIView):
         from .models import Projet
         user = self.request.user
         qs = Projet.objects.all().select_related("commune", "bailleur").order_by("-created_at")
+        
+        # Filtrage par commune si spécifié dans l'URL
+        commune_id = self.request.query_params.get("commune")
+        if commune_id:
+            qs = qs.filter(commune_id=commune_id)
+            
         if user.role == "BAILLEUR":
             return qs.filter(bailleur=user)
         return qs

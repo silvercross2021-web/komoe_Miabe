@@ -52,10 +52,11 @@ Le système repose sur une distribution des rôles où chaque acteur surveille l
     *   Interaction : Likes, commentaires, partage social.
 
 2.  **Phase d'Engagement (`OFFICIELLE`)**
-    *   Le Maire clique sur "Officialiser".
-    *   **Ancrage Blockchain :** Appel à `officialiserProposition`.
-    *   **Immuabilité :** Une fois officielle, les détails de l'idée (budget, titre) ne peuvent plus être modifiés sans laisser de trace.
-    *   **Chronologie :** Fixation automatique d'une deadline de vote à 30 jours (configurables).
+    *   Le Maire examine la suggestion et clique sur "Officialiser".
+    *   **Fixation du Budget :** Saisie obligatoire de l'enveloppe budgétaire (FCFA) destinée à ce projet.
+    *   **Ancrage Blockchain :** Appel à `officialiserProposition` sur Polygon. Le budget est gravé dans le ledger.
+    *   **Immuabilité :** Une fois officielle, les détails de l'idée et le budget alloué ne peuvent plus être modifiés arbitrairement.
+    *   **Chronologie :** Ouverture automatique de la période de vote citoyen.
 
 3.  **Phase de Scrutin Souverain**
     *   Vérification de l'adresse de résidence (Geo-voting).
@@ -163,20 +164,129 @@ Le système repose sur une distribution des rôles où chaque acteur surveille l
 2.  **[Maire]** Valide la dépense. Elle devient immuable sur blockchain.
 3.  **[Citoyen]** Signale la dépense. Ajoute une photo montrant des chaises en plastique bas de gamme.
 4.  **[Communauté]** Vote "CREDIBLE" 20 fois. Vérifiez le statut "VIRAL".
-5.  **[DGDDL]** Se connecte. Lance l'enquête. Vérifie que le bouton "Modifier" disparait pour la commune.
+5.  **[DGDDL]** Se connecte. L'enquête est lancée et le verrouillage blockchain est effectif.
 6.  **[DGDDL]** Marque comme "FRAUDE".
 7.  **[Vérification]** Vérifiez que la transaction est barrée en rouge et que le budget du projet a été corrigé automatiquement.
 
 ---
 
-## 🚀 10. PERSPECTIVES KOMOE 3.0
-*   **Identité Décentralisée (DID) :** Signature des citoyens via clé privée pour 0% de risque de fraude d'identité.
-*   **IA Sentinelle :** Analyse automatique des prix du marché pour détecter les surfacturations dès la saisie.
-*   **Reporting Automatique :** Génération de rapports PDF certifiés par la blockchain pour les instances internationales.
+## 🏗️ 11. WORKFLOW DÉTAILLÉ DE GESTION DE PROJET (EXÉCUTION & CLÔTURE)
+
+Ce workflow garantit que chaque franc CFA dépensé correspond à un avancement réel sur le terrain, vérifiable par tous.
+
+### **11.1. De l'Idée au Budget Officiel**
+*   **Budget Demandé (Citoyen) :** Estimation initiale lors de la suggestion.
+*   **Budget Alloué (Maire) :** Montant fixe et officiel saisi par le Maire lors de l'officialisation. 
+*   **Ancrage :** Ce montant est scellé sur la blockchain Polygon (`proposedBudget`) et en base de données. Il devient la référence immuable pour le futur projet.
+
+### **11.2. Initialisation et Héritage**
+*   **Conversion :** Dès que le vote citoyen atteint >50%, la proposition est clôturée.
+*   **Création Automatique :** Un objet `Projet` est créé instantanément.
+*   **Héritage Financier :** Le projet est initialisé avec le `budget_alloue_fcfa` (Engagement du Maire) et non l'estimation citoyenne.
+*   **Statut Initial :** `EN_ATTENTE`.
+
+### **11.3. Le Double Suivi de Progression**
+Le système gère deux types de progression pour une transparence totale :
+
+1.  **Progression Financière (Automatique) :**
+    *   **Calcul dynamique :** `(Somme des Dépenses Validées / Budget Alloué) * 100`.
+    *   **Indicateur :** Reflète la consommation réelle des fonds publics.
+2.  **Progression Physique (Irréversible) :**
+    *   **Contrainte Technique :** Le curseur de mise à jour est verrouillé sur sa valeur actuelle. Le Maire peut augmenter le taux, mais jamais le diminuer.
+    *   **Note de Transparence :** Un écart majeur entre l'argent dépensé et le travail fait est immédiatement visible par les citoyens.
+
+### **11.4. Protocole de Clôture "Zéro Chantier Fantôme"**
+La clôture définitive (`ACHEVE`) est techniquement impossible sans preuves :
+
+*   **Verrou 1 :** Taux d'exécution physique obligatoire à **100%**.
+*   **Verrou 2 :** Upload obligatoire d'une **Preuve de fin de travaux** (Photo, PV de réception).
+*   **Preuve IPFS :** Le document est stocké de manière décentralisée. Son hash (`CID`) est lié au projet pour l'éternité, permettant une vérification visuelle publique.
+
+### **11.5. Archivage et Audit**
+*   Le projet clôturé devient une archive publique immuable.
+*   La DGDDL peut extraire des rapports de performance certifiés incluant l'historique financier et les preuves de réalisation.
 
 ---
 
-**Ce document atteste de la complétude et de la robustesse de Komoe 2.0. Chaque workflow a été conçu pour que la vérité technique l'emporte toujours sur la manipulation humaine.**
+---
+
+## 🛡️ 12. LE WORKFLOW "SENTINELLE" (AUDIT DGDDL & ANTI-CORRUPTION)
+
+Le système Sentinelle est le garant de l'intégrité de KOMOE. Il permet un audit citoyen couplé à une intervention étatique (DGDDL) certifiée par blockchain.
+
+### **12.1. Signalement et Alerte Virale**
+*   **Origine :** Un citoyen émet un signalement (texte + photos) lié ou non à une transaction suspecte.
+*   **Crédibilité Sociale :** Les autres citoyens votent. Un signalement avec un fort taux de crédibilité passe en statut **`VIRAL`**.
+*   **Priorisation :** Les signalements `VIRAL` apparaissent en tête de liste sur le dashboard de la DGDDL avec un indicateur **`PRIORITAIRE`**.
+
+### **12.2. Lancement de l'Enquête Officielle**
+*   **Action DGDDL :** L'agent clique sur "Lancer l'enquête".
+*   **Verrouillage Blockchain :** Un hash est généré (`blockchain_tx_hash_enquete`). Il prouve à la nation que l'audit a commencé et ne peut plus être étouffé.
+*   **Notification :** Le Maire reçoit une notification d'ouverture d'enquête.
+
+### **12.3. Phase d'Investigation (Timeline d'Audit)**
+*   **Notes d'Audit :** L'agent DGDDL documente chaque étape via des notes d'enquête internes.
+*   **Transparence :** La Timeline d'Audit affiche l'avancement en temps réel pour le public (ex: "Factures vérifiées", "Inspection de terrain effectuée").
+
+### **12.4. Verdict et Résolution (Les 3 Scénarios)**
+
+#### **A. Verdict "FRAUDE" (La Fraude est confirmée)**
+1.  **Sanction Blockchain :** Le verdict est scellé immuablement.
+2.  **Invalidation :** La transaction frauduleuse est barrée et exclue des calculs de progression.
+3.  **Correction Budgétaire :** L'auditeur saisit un montant de correction. Le système génère une transaction de régularisation pour restituer les fonds au projet.
+4.  **Impact Réputation :** Le score de transparence de la commune est fortement dégradé.
+
+#### **B. Verdict "INFONDÉ" (Erreur de bonne foi)**
+1.  **Clôture :** Le signalement est marqué comme `CLOS`.
+2.  **Restauration :** La commune est blanchie. La justification de l'auditeur explique techniquement pourquoi l'anomalie n'était pas une fraude.
+
+#### **C. Verdict "FAUX" (Dénonciation Calomnieuse)**
+1.  **Rejet :** Le signalement est marqué comme `REJETE_FAUX`.
+2.  **Sanction Émetteur :** Le score de réputation du citoyen est réduit. Il perd ses privilèges de signalement prioritaires.
+
+### **12.5. Clôture et Audit Permanent**
+*   Chaque résolution génère un lien PolygonScan (`Preuve Blockchain Verdict`).
+*   Ces données sont conservées éternellement, permettant des audits a posteriori par la Cour des Comptes ou la DGDDL nationale.
 
 ---
-**FIN DU MANUEL ULTIME - KOMOE_MIABE 2026**
+
+---
+
+## 🧪 13. GUIDE DE TEST PAS-À-PAS (POUR LA DGDDL / SENTINELLE)
+
+Ce guide est destiné aux testeurs et agents DGDDL pour valider la logique de contrôle sur la plateforme.
+
+### **Étape 1 : Connexion et Accès**
+1.  Connectez-vous avec un compte ayant le rôle **DGDDL**.
+2.  Dans le menu latéral, cliquez sur **"Signalements"** ⚠️.
+3.  Vérifiez que vous voyez la liste des signalements citoyens avec les indicateurs de priorité (points rouges pulsants).
+
+### **Étape 2 : Ouverture d'Enquête**
+1.  Cliquez sur une carte de signalement pour entrer dans les détails (Audit).
+2.  Cliquez sur le bouton orange **"Lancer une enquête"**.
+3.  **Vérification :** Le statut doit passer à "ENQUÊTE EN COURS" et une nouvelle ligne doit apparaître dans la **Timeline d'Audit** en bas de page.
+
+### **Étape 3 : Investigation et Documentation**
+1.  Utilisez le bouton **"Ajouter une note d'audit"**.
+2.  Saisissez une note technique (ex: *"Vérification des factures jointe au dossier"*).
+3.  **Vérification :** La note doit s'afficher instantanément dans la timeline avec votre nom d'agent.
+
+### **Étape 4 : Verdict et Impact Financier**
+1.  Cliquez sur **"Rendre un verdict"**.
+2.  Sélectionnez **"FRAUDE"** pour tester le cas le plus complexe.
+3.  Saisissez un **Montant de correction** (ex: le montant détourné à récupérer).
+4.  Ajoutez une justification et publiez.
+5.  **Vérification :** 
+    *   Le statut passe en rouge (**Fraude confirmée**).
+    *   Un lien **"Preuve Blockchain Verdict"** apparaît.
+    *   Le Maire de la commune reçoit une alerte de sanction.
+    *   Le citoyen qui a signalé reçoit un bonus de +50 points de réputation.
+
+### **Étape 5 : Vérification de la Correction**
+1.  Allez dans le menu **"Transactions"**.
+2.  Cherchez une transaction avec le statut **"CORRIGÉE"**.
+3.  Vérifiez qu'elle correspond au montant de correction saisi lors de votre verdict.
+
+---
+
+**FIN DU MANUEL TECHNIQUE ET GUIDE DE TEST - KOMOE_MIABE 2026**

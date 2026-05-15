@@ -22,10 +22,7 @@ class CommuneSerializer(serializers.ModelSerializer):
         val = getattr(obj, "_budget_depense", None)
         if val is not None:
             return int(val)
-        from django.apps import apps
-        Transaction = apps.get_model('transactions', 'Transaction')
-        TransactionStatut = apps.get_model('transactions', 'TransactionStatut')
-        TransactionType = apps.get_model('transactions', 'TransactionType')
+        from ..transactions.models import Transaction, TransactionStatut, TransactionType
         result = Transaction.objects.filter(
             commune=obj,
             statut=TransactionStatut.VALIDE,

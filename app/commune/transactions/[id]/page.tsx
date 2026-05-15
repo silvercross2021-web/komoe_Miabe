@@ -3,7 +3,7 @@
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
-import { ExternalLink, ArrowLeft, FileText, CheckCircle2, Loader2, AlertTriangle, Hash, Calendar, Tag, Wallet, Activity, ShieldCheck, Pencil } from "lucide-react";
+import { ExternalLink, ArrowLeft, FileText, CheckCircle2, Loader2, AlertTriangle, Hash, Calendar, Tag, Wallet, Activity, ShieldCheck, Pencil, Copy, Check } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useTransactionDetail } from "@/lib/hooks/useTransactions";
@@ -14,6 +14,24 @@ import { useState } from "react";
 import { useReadContract, useWriteContract, useAccount } from "wagmi";
 import { BUDGET_LEDGER_ABI, BUDGET_LEDGER_ADDRESS } from "@/lib/blockchain";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, DrawerFooter, DrawerClose } from "@/components/ui/Drawer";
+
+const CopyButton = ({ text }: { text: string }) => {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+  return (
+    <button 
+      onClick={handleCopy} 
+      className="p-1.5 hover:bg-muted rounded-lg transition-colors text-muted-foreground hover:text-primary"
+      title="Copier"
+    >
+      {copied ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
+    </button>
+  );
+};
 
 export default function TransactionDetailPage() {
   const params = useParams();
@@ -255,6 +273,7 @@ export default function TransactionDetailPage() {
           <div className="flex items-center gap-2 text-muted-foreground font-mono text-xs">
             <Hash size={14} />
             <span>ID Transaction : {tx.id}</span>
+            <CopyButton text={tx.id} />
           </div>
         </div>
         <div className="text-left md:text-right">
@@ -323,8 +342,15 @@ export default function TransactionDetailPage() {
                   <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-4 flex items-center gap-2 italic">
                     <ShieldCheck size={14} className="text-purple-500" /> Preuve Cryptographique d'Immuabilité (Proof-of-Receipt)
                   </p>
-                  <div className="bg-muted/50 border border-border p-5 rounded-[24px] font-mono text-[10px] text-muted-foreground break-all leading-relaxed shadow-inner">
-                    {tx.blockchain_tx_hash_validation || tx.blockchain_tx_hash_soumission || (tx.statut === 'BROUILLON' ? "En attente de signature agent..." : "Génération du hash en cours sur le réseau Polygon...")}
+                  <div className="relative group/hash">
+                    <div className="bg-muted/50 border border-border p-5 rounded-[24px] font-mono text-[10px] text-muted-foreground break-all leading-relaxed shadow-inner pr-12">
+                      {tx.blockchain_tx_hash_validation || tx.blockchain_tx_hash_soumission || (tx.statut === 'BROUILLON' ? "En attente de signature agent..." : "Génération du hash en cours sur le réseau Polygon...")}
+                    </div>
+                    {(tx.blockchain_tx_hash_validation || tx.blockchain_tx_hash_soumission) && (
+                      <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                        <CopyButton text={tx.blockchain_tx_hash_validation || tx.blockchain_tx_hash_soumission || ""} />
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -376,7 +402,10 @@ export default function TransactionDetailPage() {
                 <div className="group flex items-center gap-4 p-4 bg-card rounded-[24px] border border-border hover:border-primary/50 transition-all cursor-pointer shadow-sm hover:shadow-md">
                   <div className="p-3 bg-primary/10 text-primary rounded-2xl group-hover:bg-primary group-hover:text-white transition-colors"><FileText size={20} /></div>
                   <div className="flex-1 overflow-hidden">
-                    <p className="text-xs font-black text-foreground truncate uppercase tracking-tighter">Facture_Prestation.pdf</p>
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-black text-foreground truncate uppercase tracking-tighter">Facture_Prestation.pdf</p>
+                      {tx.ipfs_hash && <CopyButton text={tx.ipfs_hash} />}
+                    </div>
                     <p className="text-[10px] text-muted-foreground font-bold italic">Sceau IPFS : {tx.ipfs_hash ? tx.ipfs_hash.slice(0, 12) + "..." : "QmXv...9a2f"}</p>
                   </div>
                 </div>

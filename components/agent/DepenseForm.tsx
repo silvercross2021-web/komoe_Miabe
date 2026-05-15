@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { FormField, Input, Select, PdfUpload, RichTextEditor, QuoteItemsInput, QuoteItemData } from "@/components/ui/ReusableForm";
 import { Button } from "@/components/ui/Button";
 import { parseGwei } from "viem";
 import { Card, CardContent } from "@/components/ui/Card";
-import { transactionsApi, type ApiError } from "@/lib/api";
+import { transactionsApi, projetsApi, type ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { useRouter } from "next/navigation";
 import { ipfsService } from "@/lib/ipfs";
@@ -29,14 +29,34 @@ export const DepenseForm = ({ initialData, initialType, onSuccess, onCancel }: D
   const { writeContractAsync } = useWriteContract();
   
   const [files, setFiles] = useState<File[]>([]);
+  const [projets, setProjets] = useState<any[]>([]);
+  const [loadingProjets, setLoadingProjets] = useState(false);
   
   const [form, setForm] = useState({
     type: initialType || initialData?.type || "DEPENSE",
     montant_fcfa: initialData?.montant_fcfa || "",
-    categorie: initialData?.categorie || "Infrastructure",
+    categorie: initialData?.categorie || "INFRASTRUCTURE",
     description: initialData?.description || "",
     periode: initialData?.periode || new Date().toISOString().slice(0, 7),
+    projet: initialData?.projet || "",
   });
+
+  const fetchProjets = async () => {
+    if (!user?.commune) return;
+    setLoadingProjets(true);
+    try {
+      const res = await projetsApi.list({ commune: Number(user.commune) });
+      setProjets(res.results || []);
+    } catch (err) {
+      console.error("Erreur chargement projets:", err);
+    } finally {
+      setLoadingProjets(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProjets();
+  }, [user?.commune]);
 
   const totalHT = quoteItems.reduce((acc, item) => acc + (item.quantity * item.unit_price), 0);
   const totalTTC = totalHT * 1.18;
@@ -87,6 +107,7 @@ export const DepenseForm = ({ initialData, initialType, onSuccess, onCancel }: D
           description: form.description,
           periode: form.periode,
           ipfs_hash: realIpfsHash || initialData.ipfs_hash,
+          projet: form.projet || null,
         });
       } else {
         created = await transactionsApi.soumettre({
@@ -97,6 +118,7 @@ export const DepenseForm = ({ initialData, initialType, onSuccess, onCancel }: D
           description: form.description,
           periode: form.periode,
           ipfs_hash: realIpfsHash,
+          projet: form.projet || null,
         });
       }
 
@@ -159,6 +181,23 @@ export const DepenseForm = ({ initialData, initialType, onSuccess, onCancel }: D
                 </Select>
               </FormField>
 
+              <FormField label="Projet Associé (Optionnel)">
+                <Select 
+                  value={form.projet} 
+                  onChange={(e: any) => setForm(f => ({ ...f, projet: e.target.value }))}
+                  disabled={loadingProjets}
+                >
+                  <option value="" className="bg-background text-foreground italic">Dépense hors projet spécifique</option>
+                  {projets.map(p => (
+                    <option key={p.id} value={p.id} className="bg-background text-foreground">
+                      {p.nom} ({p.statut})
+                    </option>
+                  ))}
+                </Select>
+              </FormField>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <FormField label="Montant (FCFA)" required={quoteItems.length === 0}>
                 <div className="relative">
                   <Input 
@@ -176,26 +215,24 @@ export const DepenseForm = ({ initialData, initialType, onSuccess, onCancel }: D
                   )}
                 </div>
               </FormField>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FormField label="Domaine d'intervention (ODD)" required>
-                <Select required value={form.categorie} onChange={(e: any) => setForm(f => ({ ...f, categorie: e.target.value }))}>
-                  <option value="INFRASTRUCTURE" className="bg-background text-foreground">Infrastructures & Travaux (ODD 9)</option>
-                  <option value="SANTE" className="bg-background text-foreground">Santé & Bien-être (ODD 3)</option>
-                  <option value="EDUCATION" className="bg-background text-foreground">Éducation de qualité (ODD 4)</option>
-                  <option value="EAU_ASSAINISSEMENT" className="bg-background text-foreground">Eau & Assainissement (ODD 6)</option>
-                  <option value="ADMINISTRATION" className="bg-background text-foreground">Fonctionnement administratif</option>
-                  <option value="AGRICULTURE" className="bg-background text-foreground">Agriculture & Souveraineté (ODD 2)</option>
-                  <option value="CULTURE_SPORT" className="bg-background text-foreground">Culture & Sport</option>
-                  <option value="AUTRE" className="bg-background text-foreground">Autres interventions</option>
-                </Select>
-              </FormField>
 
               <FormField label="Période comptable" required>
                 <Input type="month" required value={form.periode} onChange={(e: any) => setForm(f => ({ ...f, periode: e.target.value }))} />
               </FormField>
             </div>
+
+            <FormField label="Domaine d'intervention (ODD)" required>
+              <Select required value={form.categorie} onChange={(e: any) => setForm(f => ({ ...f, categorie: e.target.value }))}>
+                <option value="INFRASTRUCTURE" className="bg-background text-foreground">Infrastructures & Travaux (ODD 9)</option>
+                <option value="SANTE" className="bg-background text-foreground">Santé & Bien-être (ODD 3)</option>
+                <option value="EDUCATION" className="bg-background text-foreground">Éducation de qualité (ODD 4)</option>
+                <option value="EAU_ASSAINISSEMENT" className="bg-background text-foreground">Eau & Assainissement (ODD 6)</option>
+                <option value="ADMINISTRATION" className="bg-background text-foreground">Fonctionnement administratif</option>
+                <option value="AGRICULTURE" className="bg-background text-foreground">Agriculture & Souveraineté (ODD 2)</option>
+                <option value="CULTURE_SPORT" className="bg-background text-foreground">Culture & Sport</option>
+                <option value="AUTRE" className="bg-background text-foreground">Autres interventions</option>
+              </Select>
+            </FormField>
           </div>
 
           <div className="space-y-6 pt-4">

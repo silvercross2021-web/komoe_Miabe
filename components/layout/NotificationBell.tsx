@@ -23,11 +23,11 @@ export function NotificationBell() {
     if (!user) return;
     try {
       const data = await notificationsApi.list();
-      const notifs: AppNotification[] = Array.isArray(data) ? data : (data as any)?.results || [];
+      const notifs = data.results || [];
       setNotifications(notifs);
       setUnreadCount(notifs.filter(n => !n.is_read).length);
     } catch (err) {
-      console.error("Erreur chargement notifs:", err);
+      console.error("Erreur chargement notifs:", err instanceof Error ? err.message : err);
     }
   }, [user]);
 
@@ -52,11 +52,11 @@ export function NotificationBell() {
 
   const handleMarkAsRead = async () => {
     try {
-      await notificationsApi.marquerLues();
+      await notificationsApi.markAllAsRead();
       setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
       setUnreadCount(0);
     } catch (err) {
-      console.error("Erreur marquage lues:", err);
+      console.error("Erreur marquage lues:", err instanceof Error ? err.message : err);
     }
   };
 

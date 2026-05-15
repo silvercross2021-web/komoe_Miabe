@@ -6,17 +6,18 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { ArrowLeft, AlertTriangle, MapPin, Calendar, Users, Camera, CheckCircle2, Download, Loader2 } from "lucide-react";
+import { ArrowLeft, AlertTriangle, MapPin, Calendar, Users, Camera, CheckCircle2, Download, Loader2, ShieldAlert } from "lucide-react";
 import { signalementsApi, type Signalement } from "@/lib/api";
 import { SectionCommentaires } from "@/components/ui/SectionCommentaires";
+
+import { useAuth } from "@/lib/auth-context";
 
 export default function SignalementDetailPage() {
   const params = useParams();
   const id = params.id as string;
+  const { user } = useAuth();
   const [signalement, setSignalement] = useState<Signalement | null>(null);
   const [loading, setLoading] = useState(true);
-
-  const [isProcessing, setIsProcessing] = useState(false);
 
   const fetchDetail = async () => {
     try {
@@ -33,18 +34,6 @@ export default function SignalementDetailPage() {
     fetchDetail();
   }, [id]);
 
-  const handleProcess = async () => {
-    if (!signalement || !confirm("Confirmer le traitement de ce signalement ?")) return;
-    setIsProcessing(true);
-    try {
-      await signalementsApi.update(id, { is_reviewed: true });
-      fetchDetail();
-    } catch (err: any) {
-      alert("Erreur: " + (err.message || "Échec"));
-    } finally {
-      setIsProcessing(false);
-    }
-  };
 
   if (loading) return (
     <div className="flex flex-col items-center justify-center py-32 gap-4">
@@ -136,16 +125,27 @@ export default function SignalementDetailPage() {
             </CardContent>
           </Card>
 
-          {!signalement.is_reviewed && (
-            <Button
-              onClick={handleProcess}
-              disabled={isProcessing}
-              className="w-full h-16 bg-emerald-600 hover:bg-emerald-700 text-white rounded-[24px] font-black uppercase italic shadow-2xl shadow-emerald-500/20 flex items-center justify-center gap-3 transition-all hover:scale-[1.02]"
-            >
-              {isProcessing ? <Loader2 className="animate-spin" /> : <CheckCircle2 size={24} />}
-              Marquer comme traité
-            </Button>
-          )}
+          <div className="p-8 bg-card border border-border rounded-[32px] text-center space-y-4">
+            <ShieldAlert className="w-10 h-10 text-primary mx-auto opacity-20" />
+            <div className="space-y-1">
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-foreground">Traitement Souverain</p>
+              <p className="text-[10px] text-muted-foreground font-bold italic px-4">
+                La résolution des signalements est gérée exclusivement par le <span className="text-primary">DGDDL</span> (Contrôle National) pour garantir l'impartialité des enquêtes.
+              </p>
+            </div>
+            
+            {signalement.statut === "ACTIF" && (
+              <Badge className="bg-amber-500/10 text-amber-700 border-amber-500/20 text-[10px] font-black uppercase py-2 px-4 rounded-full">
+                🔍 En attente d'examen par le DGDDL
+              </Badge>
+            )}
+            
+            {signalement.statut === "ENQUETE_DGDDL" && (
+              <Badge className="bg-orange-500/10 text-orange-700 border-orange-500/20 text-[10px] font-black uppercase py-2 px-4 rounded-full animate-pulse">
+                ⚖️ Enquête DGDDL en cours
+              </Badge>
+            )}
+          </div>
         </div>
       </div>
 

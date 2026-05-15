@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { MessageSquare, Send, Loader2, ShieldCheck, Search, FileText } from "lucide-react";
+import { MessageSquare, Send, Loader2, ShieldCheck, Search, FileText, Camera, X } from "lucide-react";
+import { ipfsService } from "@/lib/ipfs";
 import { signalementsApi, type Commentaire } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "./Button";
@@ -33,6 +34,7 @@ export function SectionCommentaires({ signalementId, commentairesInitiaux = [] }
   const [commentaires, setCommentaires] = useState<Commentaire[]>(commentairesInitiaux);
   const [loading, setLoading] = useState(commentairesInitiaux.length === 0);
   const [contenu, setContenu] = useState("");
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -61,13 +63,21 @@ export function SectionCommentaires({ signalementId, commentairesInitiaux = [] }
     setSubmitting(true);
     setError(null);
     try {
+      let imageUrl = "";
+      if (selectedImage) {
+        const cid = await ipfsService.uploadFile(selectedImage);
+        imageUrl = `https://ipfs.io/ipfs/${cid}`;
+      }
+
       const type_commentaire = ROLE_TO_TYPE[user.role] ?? "AVIS";
       const nouveau = await signalementsApi.ajouterCommentaire(signalementId, {
         contenu: contenu.trim(),
         type_commentaire,
+        image_url: imageUrl
       });
       setCommentaires(prev => [...prev, nouveau]);
       setContenu("");
+      setSelectedImage(null);
     } catch (err: any) {
       setError(err.message || "Erreur lors de l'envoi du commentaire.");
     } finally {
@@ -118,7 +128,12 @@ export function SectionCommentaires({ signalementId, commentairesInitiaux = [] }
                         {new Date(c.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
                       </span>
                     </div>
-                    <p className="text-sm text-foreground/80 leading-relaxed">{c.contenu}</p>
+                    <p className="text-sm text-foreground/80 leading-relaxed mb-3">{c.contenu}</p>
+                    {c.image_url && (
+                      <div className="mt-2 rounded-xl overflow-hidden border border-border max-w-sm">
+                        <img src={c.image_url} alt="Attachement" className="w-full h-auto object-cover hover:scale-105 transition-transform duration-500" />
+                      </div>
+                    )}
                   </div>
                 </div>
               );
@@ -156,7 +171,33 @@ export function SectionCommentaires({ signalementId, commentairesInitiaux = [] }
                 className="w-full px-4 py-3 bg-background border border-border rounded-2xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary resize-none"
               />
             </div>
-            <div className="flex justify-end">
+             <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <input 
+                  type="file" 
+                  id="image-comment-section" 
+                  accept="image/*" 
+                  className="hidden" 
+                  onChange={(e) => setSelectedImage(e.target.files?.[0] || null)}
+                />
+                <label 
+                  htmlFor="image-comment-section"
+                  className="inline-flex items-center gap-2 text-xs font-bold text-muted-foreground hover:text-primary transition-colors cursor-pointer bg-muted px-3 py-2 rounded-xl border border-border"
+                >
+                  <Camera size={14} />
+                  <span>Joindre une image</span>
+                </label>
+
+                {selectedImage && (
+                  <div className="flex items-center gap-2 bg-primary/10 text-primary px-3 py-2 rounded-xl border border-primary/20 animate-in slide-in-from-left-2">
+                    <span className="text-xs font-bold truncate max-w-[150px]">{selectedImage.name}</span>
+                    <button type="button" onClick={() => setSelectedImage(null)} className="text-rose-500 hover:text-rose-600 transition-colors">
+                      <X size={14} />
+                    </button>
+                  </div>
+                )}
+              </div>
+
               <Button
                 type="submit"
                 disabled={submitting || !contenu.trim()}

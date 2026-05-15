@@ -26,6 +26,8 @@ class CategorieDepense(models.TextChoices):
     ADMINISTRATION = "ADMINISTRATION", "Administration"
     AGRICULTURE = "AGRICULTURE", "Agriculture"
     CULTURE_SPORT = "CULTURE_SPORT", "Culture & Sport"
+    ENVIRONNEMENT = "ENVIRONNEMENT", "Environnement"
+    SOCIAL = "SOCIAL", "Social"
     AUTRE = "AUTRE", "Autre"
 
 
@@ -66,6 +68,7 @@ class Transaction(models.Model):
     # Blockchain
     blockchain_tx_hash_soumission = models.CharField(max_length=100, blank=True, default="")
     blockchain_tx_hash_validation = models.CharField(max_length=100, blank=True, default="")
+    blockchain_synced_at = models.DateTimeField(null=True, blank=True)
     # Invalidation / Audit
     parent_frauduleux = models.ForeignKey(
         "self",
@@ -219,6 +222,10 @@ class Signalement(models.Model):
         return self.votes.filter(verdict="CREDIBLE").count()
 
     @property
+    def nb_infondes(self):
+        return self.votes.filter(verdict="INFONDE").count()
+
+    @property
     def pct_credible(self):
         total = self.nb_votes
         if total == 0:
@@ -277,6 +284,7 @@ class PropositionDepense(models.Model):
     description = models.TextField()
     categorie = models.CharField(max_length=50, choices=CategorieDepense.choices, default=CategorieDepense.AUTRE)
     budget_demande_fcfa = models.BigIntegerField(default=0)
+    budget_alloue_fcfa = models.BigIntegerField(default=0, help_text="Budget officiel fixé par le Maire lors de l'officialisation")
     soumis_par = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -480,6 +488,7 @@ class CommentaireProposition(models.Model):
         default="AVIS"
     )
     created_at = models.DateTimeField(auto_now_add=True)
+    image_url = models.URLField(blank=True, default="", help_text="Lien IPFS de l'image jointe")
 
     class Meta:
         db_table = "commentaires_propositions"
@@ -538,6 +547,7 @@ class CommentaireSignalement(models.Model):
     contenu = models.TextField()
     type_commentaire = models.CharField(max_length=20, choices=TYPE_CHOICES, default="AVIS")
     created_at = models.DateTimeField(auto_now_add=True)
+    image_url = models.URLField(blank=True, default="", help_text="Lien IPFS de l'image jointe")
 
     class Meta:
         db_table = "commentaires_signalements"

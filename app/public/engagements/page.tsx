@@ -67,13 +67,17 @@ const CATEGORIES_SIGNALEMENT = [
 ];
 
 const CATEGORIES_PROPOSITION = [
-  "Infrastructure",
-  "Éducation",
-  "Santé",
-  "Environnement",
-  "Social",
-  "Culture & Sport",
-  "Autre",
+  { label: "Infrastructure", value: "INFRASTRUCTURE" },
+  { label: "Éducation", value: "EDUCATION" },
+  { label: "Santé", value: "SANTE" },
+  { label: "Eau & Assainissement", value: "EAU_ASSAINISSEMENT" },
+  { label: "Sécurité", value: "SECURITE" },
+  { label: "Environnement", value: "ENVIRONNEMENT" },
+  { label: "Social", value: "SOCIAL" },
+  { label: "Culture & Sport", value: "CULTURE_SPORT" },
+  { label: "Agriculture", value: "AGRICULTURE" },
+  { label: "Administration", value: "ADMINISTRATION" },
+  { label: "Autre", value: "AUTRE" },
 ];
 
 export default function EngagementsCitoyensPage() {
@@ -92,7 +96,7 @@ export default function EngagementsCitoyensPage() {
     titre: "",
     description: "",
     communeId: "",
-    categorie: "",
+    categorie: "INFRASTRUCTURE",
     budget: "",
   });
   const [fichiers, setFichiers] = useState<File[]>([]);
@@ -154,7 +158,7 @@ export default function EngagementsCitoyensPage() {
 
       setPublications(merged);
     } catch (err) {
-      console.error("Fetch error:", err);
+      console.error("Fetch error (engagements):", err instanceof Error ? err.message : err);
     } finally {
       setLoading(false);
     }
@@ -206,6 +210,19 @@ export default function EngagementsCitoyensPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
+    
+    // Validation locale
+    if (!form.communeId) {
+      setFormError("Veuillez sélectionner une commune.");
+      setFormLoading(false);
+      return;
+    }
+    if (pubType === "PROPOSITION" && !form.categorie) {
+      setFormError("Veuillez sélectionner une catégorie.");
+      setFormLoading(false);
+      return;
+    }
+
     setFormLoading(true);
     setFormError(null);
 
@@ -256,12 +273,21 @@ export default function EngagementsCitoyensPage() {
       setTimeout(() => {
         setIsDrawerOpen(false);
         setFormSuccess(false);
-        setForm({ titre: "", description: "", communeId: "", categorie: "", budget: "" });
+        setForm({ titre: "", description: "", communeId: "", categorie: "INFRASTRUCTURE", budget: "" });
         setFichiers([]);
         fetchPublications();
       }, 2000);
     } catch (err: any) {
-      setFormError(err.message || "Une erreur est survenue");
+      console.error("Submit error:", err);
+      // Extraire l'erreur spécifique si possible
+      let msg = err.message || "Une erreur est survenue";
+      if (err.data && typeof err.data === 'object') {
+        const firstError = Object.entries(err.data)[0];
+        if (firstError) {
+          msg = `${firstError[0]}: ${Array.isArray(firstError[1]) ? firstError[1][0] : firstError[1]}`;
+        }
+      }
+      setFormError(msg);
     } finally {
       setFormLoading(false);
     }
@@ -381,7 +407,10 @@ export default function EngagementsCitoyensPage() {
               <div className="flex gap-4 bg-muted p-1.5 rounded-2xl">
                 <button
                   type="button"
-                  onClick={() => setPubType("PROPOSITION")}
+                  onClick={() => {
+                    setPubType("PROPOSITION");
+                    setForm(prev => ({ ...prev, categorie: "INFRASTRUCTURE" }));
+                  }}
                   disabled={user?.role === "CITOYEN" && user?.certification_status !== "APPROVED"}
                   className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-semibold transition-all ${
                     pubType === "PROPOSITION" 
@@ -394,7 +423,10 @@ export default function EngagementsCitoyensPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setPubType("SIGNALEMENT")}
+                  onClick={() => {
+                    setPubType("SIGNALEMENT");
+                    setForm(prev => ({ ...prev, categorie: CATEGORIES_SIGNALEMENT[0] }));
+                  }}
                   disabled={user?.role === "CITOYEN" && user?.certification_status !== "APPROVED"}
                   className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-semibold transition-all ${
                     pubType === "SIGNALEMENT" 
@@ -445,9 +477,15 @@ export default function EngagementsCitoyensPage() {
                     onChange={e => setForm({...form, categorie: e.target.value})}
                   >
                     <option value="">Choisir...</option>
-                    {(pubType === "PROPOSITION" ? CATEGORIES_PROPOSITION : CATEGORIES_SIGNALEMENT).map(c => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
+                    {pubType === "PROPOSITION" ? (
+                      CATEGORIES_PROPOSITION.map(c => (
+                        <option key={c.value} value={c.value}>{c.label}</option>
+                      ))
+                    ) : (
+                      CATEGORIES_SIGNALEMENT.map(c => (
+                        <option key={c} value={c}>{c}</option>
+                      ))
+                    )}
                   </select>
                 </div>
               </div>

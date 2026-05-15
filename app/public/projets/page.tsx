@@ -3,21 +3,26 @@
 import { useEffect, useState } from "react";
 import { projetsApi } from "@/lib/api";
 import { ProjetCard } from "@/components/projets/ProjetCard";
+import { useAuth } from "@/lib/auth-context";
 import { Loader2, Search, Filter, Building2 } from "lucide-react";
 import { Input } from "@/components/ui/ReusableForm";
 import { motion } from "framer-motion";
+import Link from "next/link";
 
 export default function PublicProjetsPage() {
+  const { user } = useAuth();
   const [projets, setProjets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
   useEffect(() => {
-    projetsApi.list().then(data => {
+    // On filtre par la commune de l'utilisateur s'il est connecté
+    const communeId = user?.commune;
+    projetsApi.list(communeId ? { commune: communeId } : undefined).then(data => {
       const results = Array.isArray(data) ? data : (data as any)?.results || [];
       setProjets(results);
     }).finally(() => setLoading(false));
-  }, []);
+  }, [user?.commune]);
 
   const filtered = projets.filter(p => 
     p.nom.toLowerCase().includes(search.toLowerCase()) || 
@@ -71,7 +76,9 @@ export default function PublicProjetsPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: idx * 0.1 }}
               >
-                <ProjetCard projet={projet} />
+                <Link href={`/public/projets/${projet.id}`}>
+                  <ProjetCard projet={projet} />
+                </Link>
               </motion.div>
             ))}
           </div>

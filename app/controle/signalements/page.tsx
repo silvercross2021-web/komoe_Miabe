@@ -203,60 +203,87 @@ export default function SignalementsPage() {
               </div>
             )}
             {!loading && filtered.map((s) => (
-              <div key={s.id} className="flex items-start justify-between p-6 hover:bg-muted/30 transition-all group">
-                <div className="flex items-start gap-4 flex-1">
-                  <div className="w-12 h-12 rounded-xl bg-rose-500/10 flex items-center justify-center shrink-0 border border-rose-200">
-                    <AlertCircle className="w-6 h-6 text-rose-500" />
-                  </div>
-                  <div className="space-y-1 flex-1 min-w-0">
-                    <p className="font-black text-foreground group-hover:text-primary transition-colors">{s.sujet}</p>
-                    <p className="text-xs text-muted-foreground line-clamp-2">{s.description}</p>
-                    <div className="flex items-center gap-3 flex-wrap mt-2">
-                      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-tighter flex items-center gap-1">
-                        <MapPin className="w-3 h-3" />
-                        {s.commune_detail?.nom || s.commune}
-                      </span>
-                      {s.nb_preuves > 0 && (
-                        <Badge variant="outline" className="text-[9px] font-black">
-                          {s.nb_preuves} preuve{s.nb_preuves > 1 ? "s" : ""}
+              <div key={s.id} className="relative group overflow-hidden">
+                <Link 
+                  href={`/controle/signalements/${s.id}`}
+                  className="flex items-start justify-between p-6 hover:bg-muted/50 transition-all duration-300 flex-1 cursor-pointer"
+                >
+                  <div className="flex items-start gap-4 flex-1">
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 border ${
+                      s.statut === "ENQUETE_DGDDL" 
+                        ? "bg-orange-500/10 border-orange-200 text-orange-500" 
+                        : "bg-rose-500/10 border-rose-200 text-rose-500"
+                    }`}>
+                      <AlertCircle className="w-6 h-6" />
+                    </div>
+                    <div className="space-y-1 flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="font-black text-foreground group-hover:text-primary transition-colors truncate">
+                          {s.sujet}
+                        </p>
+                        {s.is_prioritaire && (
+                          <span className="animate-pulse bg-red-500 w-2 h-2 rounded-full" title="Prioritaire" />
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground line-clamp-1 italic">{s.description}</p>
+                      
+                      <div className="flex items-center gap-3 flex-wrap mt-3">
+                        <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest flex items-center gap-1">
+                          <MapPin className="w-3 h-3 text-primary" />
+                          {s.commune_detail?.nom || s.commune}
+                        </span>
+                        
+                        {/* Statut Badge */}
+                        <Badge variant="outline" className={`text-[9px] font-black border-2 ${
+                          s.statut === "ENQUETE_DGDDL" 
+                            ? "bg-orange-500/5 text-orange-600 border-orange-500/20" 
+                            : s.statut === "VALIDE_FRAUDE"
+                            ? "bg-red-500/5 text-red-600 border-red-500/20"
+                            : "bg-muted/10 text-muted-foreground border-border"
+                        }`}>
+                          {s.statut === "ENQUETE_DGDDL" ? "🔍 ENQUÊTE EN COURS" : s.statut}
                         </Badge>
-                      )}
-                      {s.is_reviewed ? (
-                        <Badge variant="success" className="text-[9px] font-black">Révisé</Badge>
-                      ) : (
-                        <Badge variant="warning" className="text-[9px] font-black">En attente</Badge>
-                      )}
-                      <span className="text-[9px] font-bold text-muted-foreground italic">
-                        {formatDateShort(s.created_at)}
-                      </span>
+
+                        {s.nb_preuves > 0 && (
+                          <Badge variant="outline" className="text-[9px] font-black bg-primary/5 text-primary border-primary/20">
+                            {s.nb_preuves} preuve{s.nb_preuves > 1 ? "s" : ""}
+                          </Badge>
+                        )}
+
+                        <span className="text-[9px] font-bold text-muted-foreground italic ml-auto">
+                          {formatDateShort(s.created_at)}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
-                <div className="flex items-center gap-2 shrink-0 ml-4">
-                  <Link href={`/controle/signalements/${s.id}`}>
-                    <Button variant="outline" className="h-10 px-3 rounded-lg text-[9px] font-black">
-                      <ExternalLink className="w-4 h-4" />
+
+                  <div className="flex items-center gap-2 shrink-0 ml-4">
+                    <Button variant="ghost" className="h-10 px-4 rounded-xl text-[10px] font-black uppercase tracking-widest group-hover:bg-primary group-hover:text-white transition-all">
+                      Audit
+                      <ExternalLink className="w-3.5 h-3.5 ml-2" />
                     </Button>
-                  </Link>
-                  {!s.is_reviewed && (
-                    <>
-                      <Button
-                        onClick={() => handleVote(s.id, "CREDIBLE")}
-                        disabled={votingId === s.id}
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white h-10 px-3 rounded-lg text-[9px] font-black"
-                      >
-                        {votingId === s.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <ThumbsUp className="w-4 h-4" />}
-                      </Button>
-                      <Button
-                        onClick={() => handleVote(s.id, "INFONDE")}
-                        disabled={votingId === s.id}
-                        className="bg-rose-600 hover:bg-rose-700 text-white h-10 px-3 rounded-lg text-[9px] font-black"
-                      >
-                        {votingId === s.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <ThumbsDown className="w-4 h-4" />}
-                      </Button>
-                    </>
-                  )}
-                </div>
+                  </div>
+                </Link>
+
+                {/* Actions de vote rapides (si non révisé) */}
+                {!s.is_reviewed && (
+                  <div className="absolute right-24 top-1/2 -translate-y-1/2 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleVote(s.id, "CREDIBLE"); }}
+                      disabled={votingId === s.id}
+                      className="bg-emerald-600/90 hover:bg-emerald-600 text-white h-9 w-9 p-0 rounded-xl shadow-lg shadow-emerald-500/20"
+                    >
+                      {votingId === s.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <ThumbsUp className="w-4 h-4" />}
+                    </Button>
+                    <Button
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleVote(s.id, "INFONDE"); }}
+                      disabled={votingId === s.id}
+                      className="bg-rose-600/90 hover:bg-rose-600 text-white h-9 w-9 p-0 rounded-xl shadow-lg shadow-rose-500/20"
+                    >
+                      {votingId === s.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <ThumbsDown className="w-4 h-4" />}
+                    </Button>
+                  </div>
+                )}
               </div>
             ))}
           </div>

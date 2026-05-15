@@ -31,6 +31,9 @@ import {
 import { formatFCFA, formatDateShort } from "@/lib/constants";
 import { ipfsService } from "@/lib/ipfs";
 import { motion } from "framer-motion";
+import { useWriteContract, useAccount } from "wagmi";
+import { parseGwei } from "viem";
+import { BUDGET_LEDGER_ABI, BUDGET_LEDGER_ADDRESS } from "@/lib/blockchain";
 
 export default function PropositionDetailPage() {
   const { id } = useParams();
@@ -40,7 +43,13 @@ export default function PropositionDetailPage() {
   const [loading, setLoading] = useState(true);
   const [commentLoading, setCommentLoading] = useState(false);
   const [commentContent, setCommentContent] = useState("");
+  const [proposedBudget, setProposedBudget] = useState<string>("");
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [commentError, setCommentError] = useState<string | null>(null);
+  const [governanceLoading, setGovernanceLoading] = useState(false);
+
+  const { writeContractAsync } = useWriteContract();
+  const { isConnected } = useAccount();
 
   const fetchData = async () => {
     try {
@@ -67,16 +76,81 @@ export default function PropositionDetailPage() {
     }
   };
 
+  const handleOfficialiser = async () => {
+    if (!isConnected) return alert("Veuillez connecter votre portefeuille MetaMask.");
+    if (!proposition) return;
+
+    if (!proposedBudget || Number(proposedBudget) <= 0) {
+      return alert("Veuillez saisir le budget alloué pour ce projet (Estimation municipale).");
+    }
+
+    setGovernanceLoading(true);
+    try {
+      // 1. Signature Blockchain
+      console.log("📝 Signature d'engagement Maire sur Polygon...");
+      const hash = await writeContractAsync({
+        address: BUDGET_LEDGER_ADDRESS,
+        abi: BUDGET_LEDGER_ABI,
+        functionName: "officialiserProposition",
+        args: [
+          proposition.id,
+          String(proposition.commune),
+          `Engagement Budgetaire: ${proposedBudget} FCFA`
+        ],
+        gas: 300000n,
+        maxPriorityFeePerGas: parseGwei('25'),
+        maxFeePerGas: parseGwei('30'),
+      });
+
+      // 2. Notification Backend
+      await propositionsApi.officialiser(proposition.id, {
+        tx_hash: hash,
+        budget_alloue_fcfa: Number(proposedBudget)
+      });
+      alert("Félicitations ! La proposition est désormais officielle avec un budget de " + proposedBudget + " FCFA. Le vote décisionnel est ouvert.");
+      fetchData();
+    } catch (err: any) {
+      console.error(err);
+      alert("Erreur lors de l'officialisation : " + (err.shortMessage || err.message));
+    } finally {
+      setGovernanceLoading(false);
+    }
+  };
+
+  const handleCloturer = async () => {
+    if (!proposition) return;
+    if (!window.confirm("Voulez-vous clôturer le vote et appliquer le résultat ?")) return;
+
+    setGovernanceLoading(true);
+    try {
+      const res = await propositionsApi.cloturer(proposition.id);
+      alert(`Vote clôturé ! Résultat : ${res.statut === "APPROUVEE" ? "PROJET ADOPTÉ ✅" : "PROJET REJETÉ ❌"}`);
+      fetchData();
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setGovernanceLoading(false);
+    }
+  };
+
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !commentContent.trim()) return;
     setCommentLoading(true);
     setCommentError(null);
     try {
+      let imageUrl = "";
+      if (selectedImage) {
+        const cid = await ipfsService.uploadFile(selectedImage);
+        imageUrl = `https://ipfs.io/ipfs/${cid}`;
+      }
+
       await propositionsApi.ajouterCommentaire(id as string, {
-        contenu: commentContent
+        contenu: commentContent,
+        image_url: imageUrl
       });
       setCommentContent("");
+      setSelectedImage(null);
       fetchData();
     } catch (err: any) {
       setCommentError(err.message);
@@ -191,20 +265,20 @@ export default function PropositionDetailPage() {
           </div>
         </div>
 
-        {/* Action Bar */}
+        {/* Action Bar - Community Voting */}
         <div className="bg-muted border-t border-border p-6 flex flex-wrap items-center justify-between gap-6">
           <div className="flex-1 space-y-2">
              <div className="flex items-center justify-between text-sm font-semibold mb-1">
-                <span className="text-blue-500">{proposition.pct_soutien}% de soutien</span>
-                <span className="text-muted-foreground">{proposition.nb_soutiens + proposition.nb_oppositions} votes</span>
+                <span className="text-blue-500 font-black italic uppercase tracking-tighter">{proposition.pct_soutien}% de soutien citoyen</span>
+                <span className="text-muted-foreground font-bold">{proposition.nb_soutiens + proposition.nb_oppositions} votes exprimés</span>
              </div>
-             <div className="w-full bg-border h-3 rounded-full overflow-hidden flex">
+             <div className="w-full bg-border h-4 rounded-full overflow-hidden flex shadow-inner">
                 <div 
-                  className="bg-blue-600 h-full transition-all duration-500" 
+                  className="bg-blue-600 h-full transition-all duration-700 ease-out" 
                   style={{ width: `${proposition.pct_soutien}%` }} 
                 />
                 <div 
-                  className="bg-rose-500 h-full transition-all duration-500" 
+                  className="bg-rose-500 h-full transition-all duration-700 ease-out" 
                   style={{ width: `${100 - proposition.pct_soutien}%` }} 
                 />
              </div>
@@ -214,9 +288,9 @@ export default function PropositionDetailPage() {
             <Button 
               onClick={() => handleVote("SOUTIEN")}
               disabled={user?.role === "CITOYEN" && user?.certification_status !== "APPROVED"}
-              className={`rounded-2xl gap-2 h-12 px-6 ${
-                proposition.mon_vote === "SOUTIEN" ? "bg-blue-700" : "bg-blue-600 hover:bg-blue-700"
-              } text-white disabled:opacity-50`}
+              className={`rounded-2xl gap-2 h-14 px-8 font-black uppercase tracking-widest text-xs transition-all ${
+                proposition.mon_vote === "SOUTIEN" ? "bg-blue-800 scale-95" : "bg-blue-600 hover:bg-blue-700 hover:scale-105"
+              } text-white shadow-xl shadow-blue-600/20 disabled:opacity-50`}
             >
               <ThumbsUp className="w-5 h-5" />
               Soutenir
@@ -225,8 +299,8 @@ export default function PropositionDetailPage() {
               onClick={() => handleVote("OPPOSITION")}
               disabled={user?.role === "CITOYEN" && user?.certification_status !== "APPROVED"}
               variant="outline"
-              className={`rounded-2xl border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 gap-2 h-12 px-6 disabled:opacity-50 ${
-                proposition.mon_vote === "OPPOSITION" ? "ring-2 ring-rose-500" : ""
+              className={`rounded-2xl border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 hover:scale-105 gap-2 h-14 px-8 font-black uppercase tracking-widest text-xs transition-all disabled:opacity-50 ${
+                proposition.mon_vote === "OPPOSITION" ? "ring-4 ring-rose-500/20 bg-rose-100 scale-95" : ""
               }`}
             >
               <ThumbsDown className="w-5 h-5" />
@@ -235,6 +309,89 @@ export default function PropositionDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Mayor Governance Panel */}
+      {user?.role === "MAIRE" && Number(user.commune) === proposition.commune && (
+        <Card className="border-2 border-primary/30 bg-primary/5 rounded-[32px] overflow-hidden shadow-xl animate-in zoom-in-95 duration-500">
+          <CardHeader className="bg-primary/10 border-b border-primary/10 p-6">
+            <CardTitle className="text-primary flex items-center gap-2 text-sm font-black uppercase tracking-[0.2em]">
+              <ShieldCheck className="w-5 h-5" />
+              Panneau de Gouvernance Municipale
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-8">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-8">
+              <div className="flex-1 space-y-2">
+                <h3 className="text-xl font-black text-foreground italic uppercase leading-none">
+                  {proposition.statut === "SUGGESTION" ? "Officialiser cette idée ?" : "Suivi du vote décisionnel"}
+                </h3>
+                <p className="text-sm text-muted-foreground font-medium leading-relaxed max-w-xl">
+                  {proposition.statut === "SUGGESTION" 
+                    ? "En officialisant cette proposition, vous engagez votre signature blockchain et fixez l'enveloppe budgétaire estimée par la mairie."
+                    : "Le vote est en phase finale. Si le seuil d'approbation est atteint à la clôture, KOMOE créera automatiquement la fiche projet et allouera le budget fixé."}
+                </p>
+
+                {proposition.statut === "SUGGESTION" && (
+                  <div className="pt-4 max-w-xs">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-primary mb-2 block">Budget Estimé (FCFA)</label>
+                    <div className="relative">
+                      <Wallet className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-primary" />
+                      <input 
+                        type="number"
+                        placeholder="Ex: 5000000"
+                        value={proposedBudget}
+                        onChange={(e) => setProposedBudget(e.target.value)}
+                        className="w-full h-12 pl-11 pr-4 bg-white/50 border border-primary/20 rounded-xl font-black text-primary focus:ring-2 focus:ring-primary outline-none"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="shrink-0 flex flex-col gap-3 min-w-[240px]">
+                {proposition.statut === "SUGGESTION" && (
+                  <Button 
+                    onClick={handleOfficialiser}
+                    disabled={governanceLoading}
+                    className="w-full h-16 rounded-2xl bg-primary hover:bg-primary/90 text-white font-black uppercase tracking-widest text-xs shadow-xl shadow-primary/20 flex items-center gap-3 transition-all hover:scale-105 active:scale-95"
+                  >
+                    {governanceLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : <CheckCircle2 className="w-6 h-6" />}
+                    Signer & Officialiser
+                  </Button>
+                )}
+
+                {proposition.statut === "OFFICIELLE" && (
+                  <Button 
+                    onClick={handleCloturer}
+                    disabled={governanceLoading}
+                    className="w-full h-16 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase tracking-widest text-xs shadow-xl shadow-emerald-600/20 flex items-center gap-3 transition-all hover:scale-105 active:scale-95"
+                  >
+                    {governanceLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : <CheckCircle2 className="w-6 h-6" />}
+                    Clôturer & Lancer Projet
+                  </Button>
+                )}
+
+                {proposition.statut === "APPROUVEE" && (
+                  <div className="flex items-center justify-center p-6 bg-emerald-500/10 border-2 border-emerald-500/30 rounded-2xl text-emerald-600 font-black text-xs uppercase tracking-widest gap-2">
+                    <CheckCircle2 className="w-5 h-5" />
+                    Projet Adopté & Planifié
+                  </div>
+                )}
+                
+                {proposition.maire_signature_hash && (
+                  <a 
+                    href={`https://amoy.polygonscan.com/tx/${proposition.maire_signature_hash}`}
+                    target="_blank" rel="noopener noreferrer"
+                    className="text-[10px] font-bold text-muted-foreground hover:text-primary text-center underline flex items-center justify-center gap-1 group"
+                  >
+                    Preuve Blockchain <ExternalLink size={10} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                  </a>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Discussion Section */}
       <div className="space-y-6">
@@ -265,9 +422,32 @@ export default function PropositionDetailPage() {
                 onChange={e => setCommentContent(e.target.value)}
               />
               <div className="flex items-center justify-between mt-3">
-                <button type="button" className="p-2 text-muted-foreground hover:text-primary transition-colors">
+                <input 
+                  type="file" 
+                  id="image-comment" 
+                  accept="image/*" 
+                  className="hidden" 
+                  onChange={(e) => setSelectedImage(e.target.files?.[0] || null)}
+                />
+                <label 
+                  htmlFor="image-comment"
+                  className="p-2 text-muted-foreground hover:text-primary transition-colors cursor-pointer"
+                >
                   <ImageIcon className="w-5 h-5" />
-                </button>
+                </label>
+                
+                {selectedImage && (
+                  <div className="flex items-center gap-2 bg-muted px-3 py-1 rounded-lg border border-border">
+                    <ImageIcon className="w-4 h-4 text-primary" />
+                    <span className="text-xs truncate max-w-[150px]">{selectedImage.name}</span>
+                    <button type="button" onClick={() => setSelectedImage(null)} className="text-rose-500 hover:text-rose-600">
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+
+                <div className="flex-1" />
+
                 <Button disabled={commentLoading || (user.role === "CITOYEN" && user.certification_status !== "APPROVED")} className="rounded-xl px-6 bg-primary hover:bg-primary/90 text-primary-foreground">
                   {commentLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Envoyer"}
                   <Send className="w-4 h-4 ml-2" />
@@ -303,9 +483,14 @@ export default function PropositionDetailPage() {
                 </div>
                 <span className="text-xs text-muted-foreground">{formatDateShort(comment.created_at)}</span>
               </div>
-              <p className="text-slate-700 text-sm leading-relaxed">
+              <p className="text-slate-700 text-sm leading-relaxed mb-3">
                 {comment.contenu}
               </p>
+              {comment.image_url && (
+                <div className="mt-3 rounded-xl overflow-hidden border border-border max-w-sm">
+                  <img src={comment.image_url} alt="Preuve commentaire" className="w-full h-auto object-cover hover:scale-105 transition-transform duration-500" />
+                </div>
+              )}
             </motion.div>
           ))}
           {proposition.commentaires?.length === 0 && (

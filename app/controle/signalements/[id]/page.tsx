@@ -32,8 +32,11 @@ export default function ControleSignalementDetailPage() {
   const [votingId, setVotingId] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [showResoudreForm, setShowResoudreForm] = useState(false);
+  const [showNoteForm, setShowNoteForm] = useState(false);
   const [resolution, setResolution] = useState<"FRAUDE" | "FAUX" | "INFONDE">("INFONDE");
   const [justification, setJustification] = useState("");
+  const [montantCorrige, setMontantCorrige] = useState("");
+  const [noteEnquete, setNoteEnquete] = useState("");
 
   const fetchSignalement = async () => {
     try {
@@ -68,9 +71,30 @@ export default function ControleSignalementDetailPage() {
     if (!justification.trim()) { alert("La justification est obligatoire."); return; }
     setActionLoading(true);
     try {
-      await signalementsApi.resoudreEnquete(id, { resolution, justification });
+      await signalementsApi.resoudreEnquete(id, { 
+        resolution, 
+        justification, 
+        montant_corrige: resolution === "FRAUDE" && montantCorrige ? Number(montantCorrige) : undefined 
+      });
       setShowResoudreForm(false);
       setJustification("");
+      setMontantCorrige("");
+      fetchSignalement();
+    } catch (err: any) {
+      alert("Erreur : " + (err.message || "Échec"));
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleAddNote = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!noteEnquete.trim()) return;
+    setActionLoading(true);
+    try {
+      await signalementsApi.ajouterNoteEnquete(id, noteEnquete);
+      setNoteEnquete("");
+      setShowNoteForm(false);
       fetchSignalement();
     } catch (err: any) {
       alert("Erreur : " + (err.message || "Échec"));
@@ -83,11 +107,33 @@ export default function ControleSignalementDetailPage() {
     if (!signalement) return;
     const label = verdict === "CREDIBLE" ? "CRÉDIBLE" : "INFONDÉ";
     if (!confirm(`Êtes-vous certain que ce signalement est ${label} ?\n\nCette action est irréversible.`)) return;
+    
     setVotingId(verdict);
+    const oldSignalement = { ...signalement };
+    const newSignalement = { ...signalement };
+    const oldVote = signalement.mon_vote;
+
+    // Mise à jour optimiste
+    if (verdict === "CREDIBLE") {
+      newSignalement.nb_credibles += 1;
+      if (oldVote === "INFONDE") newSignalement.nb_infondes -= 1;
+    } else {
+      newSignalement.nb_infondes += 1;
+      if (oldVote === "CREDIBLE") newSignalement.nb_credibles -= 1;
+    }
+    newSignalement.nb_votes = newSignalement.nb_credibles + newSignalement.nb_infondes;
+    newSignalement.pct_credible = newSignalement.nb_votes > 0 
+      ? Math.round((newSignalement.nb_credibles / newSignalement.nb_votes) * 100) 
+      : 0;
+    newSignalement.mon_vote = verdict;
+    setSignalement(newSignalement);
+
     try {
       await signalementsApi.voter(id, verdict);
-      fetchSignalement();
+      const fresh = await signalementsApi.detail(id);
+      setSignalement(fresh);
     } catch (err: any) {
+      setSignalement(oldSignalement);
       alert("Erreur vote : " + (err.message || "Échec"));
     } finally {
       setVotingId(null);
@@ -212,6 +258,28 @@ export default function ControleSignalementDetailPage() {
                 </div>
               </div>
             </div>
+
+            {/* Timeline d'Audit DGDDL */}
+            {signalement.actions_dgddl && signalement.actions_dgddl.length > 0 && (
+              <div className="mt-12 pt-8 border-t border-border">
+                <h4 className="text-sm font-black uppercase tracking-widest mb-6 flex items-center gap-2">
+                  <ShieldAlert className="text-primary w-4 h-4" /> Timeline d'Audit DGDDL
+                </h4>
+                <div className="space-y-6">
+                  {signalement.actions_dgddl.map((action, idx) => (
+                    <div key={idx} className="relative pl-6 border-l-2 border-primary/20 pb-2">
+                      <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-primary border-2 border-background" />
+                      <p className="text-[10px] font-black text-primary uppercase mb-1">
+                        {new Date(action.created_at).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })} — {action.effectuee_par_nom}
+                      </p>
+                      <p className="text-xs font-bold text-foreground bg-muted/20 p-3 rounded-xl border border-border/50">
+                        {action.description}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -248,6 +316,15 @@ export default function ControleSignalementDetailPage() {
                   {signalement.resolution_justification && (
                     <p className="text-xs mt-1">{signalement.resolution_justification}</p>
                   )}
+                  {signalement.blockchain_tx_hash_resolution && (
+                    <a 
+                      href={`https://amoy.polygonscan.com/tx/${signalement.blockchain_tx_hash_resolution}`}
+                      target="_blank"
+                      className="text-[9px] font-black text-primary underline block mt-2"
+                    >
+                      Preuve Blockchain Verdict
+                    </a>
+                  )}
                 </div>
               )}
 
@@ -259,11 +336,43 @@ export default function ControleSignalementDetailPage() {
                     <Button
                       onClick={handleLancerEnquete}
                       disabled={actionLoading}
-                      className="w-full bg-orange-600 hover:bg-orange-700 text-white rounded-[20px] h-12 font-black uppercase"
+                      className="w-full bg-orange-600 hover:bg-orange-700 text-white rounded-[20px] h-12 font-black uppercase shadow-lg shadow-orange-500/20"
                     >
                       {actionLoading ? <Loader2 className="animate-spin w-4 h-4 mr-2" /> : <SearchIcon className="w-4 h-4 mr-2" />}
                       Lancer une enquête
                     </Button>
+                  )}
+
+                  {/* Ajouter une note d'enquête */}
+                  {signalement.statut === "ENQUETE_DGDDL" && !showNoteForm && !showResoudreForm && (
+                    <Button
+                      onClick={() => setShowNoteForm(true)}
+                      variant="outline"
+                      className="w-full rounded-[20px] h-12 font-black uppercase border-primary/20 text-primary"
+                    >
+                      Ajouter une note d'audit
+                    </Button>
+                  )}
+
+                  {showNoteForm && (
+                    <form onSubmit={handleAddNote} className="space-y-3 p-4 bg-primary/5 rounded-[20px] border border-primary/20">
+                      <textarea
+                        value={noteEnquete}
+                        onChange={e => setNoteEnquete(e.target.value)}
+                        placeholder="Observation d'enquête..."
+                        rows={3}
+                        required
+                        className="w-full px-3 py-2 bg-background border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                      />
+                      <div className="flex gap-2">
+                        <Button type="submit" disabled={actionLoading} className="flex-1 rounded-xl h-10 font-black uppercase text-[10px]">
+                          Enregistrer
+                        </Button>
+                        <Button type="button" variant="ghost" onClick={() => setShowNoteForm(false)} className="rounded-xl h-10 px-3">
+                          Annuler
+                        </Button>
+                      </div>
+                    </form>
                   )}
 
                   {/* Résoudre enquête — disponible si statut ENQUETE_DGDDL */}
@@ -271,7 +380,7 @@ export default function ControleSignalementDetailPage() {
                     <Button
                       onClick={() => setShowResoudreForm(true)}
                       disabled={actionLoading}
-                      className="w-full bg-purple-600 hover:bg-purple-700 text-white rounded-[20px] h-12 font-black uppercase"
+                      className="w-full bg-purple-600 hover:bg-purple-700 text-white rounded-[20px] h-12 font-black uppercase shadow-lg shadow-purple-500/20"
                     >
                       <Gavel className="w-4 h-4 mr-2" />
                       Rendre un verdict
@@ -296,10 +405,24 @@ export default function ControleSignalementDetailPage() {
                         <option value="FAUX">⚠️ FAUX — Signalement abusif</option>
                         <option value="INFONDE">⚪ INFONDÉ — Classé sans suite</option>
                       </select>
+
+                      {resolution === "FRAUDE" && (
+                        <div className="animate-in slide-in-from-top-2 duration-300">
+                          <label className="text-[9px] font-black text-red-600 uppercase mb-1 block">Montant de correction (FCFA)</label>
+                          <input
+                            type="number"
+                            value={montantCorrige}
+                            onChange={e => setMontantCorrige(e.target.value)}
+                            placeholder="Montant à régulariser..."
+                            className="w-full px-3 py-2 bg-red-500/5 border border-red-200 rounded-xl text-sm font-black text-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
+                          />
+                        </div>
+                      )}
+
                       <textarea
                         value={justification}
                         onChange={e => setJustification(e.target.value)}
-                        placeholder="Justification obligatoire..."
+                        placeholder="Justification d'audit obligatoire..."
                         rows={3}
                         required
                         className="w-full px-3 py-2 bg-background border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
@@ -310,7 +433,7 @@ export default function ControleSignalementDetailPage() {
                         className="w-full bg-primary hover:bg-primary/90 text-white font-black rounded-xl h-10"
                       >
                         {actionLoading ? <Loader2 className="animate-spin w-4 h-4 mr-2" /> : <Gavel className="w-4 h-4 mr-2" />}
-                        Confirmer le verdict
+                        Publier le verdict officiel
                       </Button>
                     </form>
                   )}
@@ -321,7 +444,11 @@ export default function ControleSignalementDetailPage() {
                       <Button
                         onClick={() => handleVote("CREDIBLE")}
                         disabled={!!votingId}
-                        className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-[20px] h-10 font-black text-xs uppercase"
+                        className={`flex-1 rounded-[20px] h-10 font-black text-xs uppercase border-2 transition-all ${
+                          signalement.mon_vote === "CREDIBLE"
+                            ? "bg-emerald-600 border-emerald-600 text-white"
+                            : "bg-transparent border-emerald-600/20 text-emerald-600 hover:bg-emerald-50"
+                        }`}
                       >
                         {votingId === "CREDIBLE" ? <Loader2 className="animate-spin w-3 h-3 mr-1" /> : <ThumbsUp className="w-3 h-3 mr-1" />}
                         Crédible
@@ -329,7 +456,11 @@ export default function ControleSignalementDetailPage() {
                       <Button
                         onClick={() => handleVote("INFONDE")}
                         disabled={!!votingId}
-                        className="flex-1 bg-rose-600 hover:bg-rose-700 text-white rounded-[20px] h-10 font-black text-xs uppercase"
+                        className={`flex-1 rounded-[20px] h-10 font-black text-xs uppercase border-2 transition-all ${
+                          signalement.mon_vote === "INFONDE"
+                            ? "bg-rose-600 border-rose-600 text-white"
+                            : "bg-transparent border-rose-600/20 text-rose-600 hover:bg-rose-50"
+                        }`}
                       >
                         {votingId === "INFONDE" ? <Loader2 className="animate-spin w-3 h-3 mr-1" /> : <ThumbsDown className="w-3 h-3 mr-1" />}
                         Infondé
@@ -346,16 +477,37 @@ export default function ControleSignalementDetailPage() {
                 </div>
               )}
 
-              {(signalement.statut === "RESOLU" || signalement.statut === "CLOS" || signalement.statut === "REJETE_FAUX") && (
+              {(signalement.statut === "CLOS" || signalement.statut === "REJETE_FAUX") && (
                 <div className="flex items-center gap-3 p-4 bg-emerald-500/10 rounded-[20px] border border-emerald-200">
                   <CheckCircle2 className="text-emerald-600" size={20} />
                   <p className="text-xs font-black text-emerald-700 uppercase">Dossier clos</p>
                 </div>
               )}
 
+              {/* Contexte de la Transaction */}
+              {signalement.transaction_detail && (
+                <div className="mt-6 pt-6 border-t border-border">
+                  <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-3 italic">Transaction suspectée</p>
+                  <div className="p-4 bg-muted/20 rounded-[24px] border border-border/50">
+                    <p className="text-lg font-black text-foreground">
+                      {signalement.transaction_detail.montant_fcfa.toLocaleString()} FCFA
+                    </p>
+                    <p className="text-[10px] font-black text-primary uppercase mt-1">
+                      {signalement.transaction_detail.categorie}
+                    </p>
+                    <div className="mt-3 flex items-center justify-between text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
+                      <span>{new Date(signalement.transaction_detail.created_at).toLocaleDateString()}</span>
+                      <span className="px-2 py-0.5 bg-primary/10 text-primary rounded-full">
+                        {signalement.transaction_detail.statut}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="mt-4 pt-4 border-t border-border text-center">
                 <p className="text-[10px] text-muted-foreground font-bold italic">
-                  Utilisez la section commentaires pour documenter vos observations.
+                  Utilisez la section commentaires pour documenter vos observations publiques.
                 </p>
               </div>
             </CardContent>

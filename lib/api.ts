@@ -90,7 +90,11 @@ async function apiFetch<T>(
       (data.detail as string) ||
       Object.values(data).flat().join(" ") ||
       `Erreur ${res.status}`;
-    throw { status: res.status, data, message } as ApiError;
+    
+    const error = new Error(message) as any;
+    error.status = res.status;
+    error.data = data;
+    throw error;
   }
 
   if (res.status === 204 || res.status === 200 && res.headers.get('content-length') === '0') {
@@ -346,6 +350,7 @@ export interface Transaction {
   blockchain_tx_hash_validation: string;
   soumis_par_detail: UserProfile | null;
   valide_par_detail: UserProfile | null;
+  projet?: number | null;
   created_at: string; validated_at: string | null;
   updated_at: string;
   corrections?: Transaction[] | null;
@@ -357,6 +362,7 @@ export interface TransactionListFilters {
   statut?: string;
   limit?: number;
   offset?: number;
+  projet?: number;
 }
 
 export interface TransactionCreatePayload {
@@ -368,6 +374,7 @@ export interface TransactionCreatePayload {
   periode: string;
   ipfs_hash?: string;
   blockchain_tx_hash_soumission?: string;
+  projet?: number | null;
 }
 
 export const transactionsApi = {
@@ -377,6 +384,7 @@ export const transactionsApi = {
     if (filters?.type) params.set("type", filters.type);
     if (filters?.statut) params.set("statut", filters.statut);
     if (filters?.limit) params.set("limit", String(filters.limit));
+    if (filters?.projet) params.set("projet", String(filters.projet));
     if (filters?.offset) params.set("offset", String(filters.offset));
     const qs = params.toString();
     return apiFetch<{ results: Transaction[]; count: number }>(
@@ -467,6 +475,7 @@ export interface Commentaire {
   auteur_role: string;
   contenu: string;
   type_commentaire: "AVIS" | "JUSTIFICATION" | "ENQUETE";
+  image_url?: string;
   created_at: string;
 }
 
@@ -485,13 +494,18 @@ export interface Signalement {
   is_reviewed: boolean;
   nb_preuves: number;
   nb_votes: number;
+  nb_credibles: number;
+  nb_infondes: number;
   pct_credible: number;
+  mon_vote: "CREDIBLE" | "INFONDE" | null;
   enquete_lancee_par?: string | null;
   enquete_lancee_a?: string | null;
   resolution?: "FRAUDE" | "FAUX" | "INFONDE" | null;
   resolution_justification?: string | null;
   resolution_par?: string | null;
   resolution_a?: string | null;
+  blockchain_tx_hash_enquete?: string | null;
+  blockchain_tx_hash_resolution?: string | null;
   created_by_profession: "CITOYEN" | "JOURNALISTE" | "ONG" | "CHERCHEUR" | "BAILLEUR";
   commentaires: Commentaire[];
   preuves: PreuveSignalement[];
@@ -538,7 +552,7 @@ export interface Proposition {
   budget_demande_fcfa: number;
   soumis_par?: string;
   soumis_par_detail?: { id: string; full_name: string };
-  statut: "ACTIVE" | "VALIDEE" | "REJETEE" | "EXPIREE" | "CONVERTIE";
+  statut: "ACTIVE" | "VALIDEE" | "REJETEE" | "EXPIREE" | "CONVERTIE" | "SUGGESTION" | "OFFICIELLE" | "APPROUVEE";
   deadline_vote: string | null;
   nb_soutiens: number;
   nb_oppositions: number;
@@ -548,6 +562,8 @@ export interface Proposition {
   commentaires: CommentaireProposition[];
   preuves: PreuveProposition[];
   nb_preuves: number;
+  maire_signature_hash?: string;
+  is_official?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -558,6 +574,7 @@ export interface CommentaireProposition {
   auteur: string | null;
   auteur_nom: string;
   contenu: string;
+  image_url?: string;
   created_at: string;
 }
 
@@ -611,8 +628,8 @@ export const rapportsApi = {
 };
 
 export const notificationsApi = {
-  list: () => apiFetch<AppNotification[]>("/api/transactions/notifications/"),
-  marquerLues: () => apiFetch<{ message: string }>("/api/transactions/notifications/read/", { method: "PATCH" }),
+  list: () => apiFetch<{ results: AppNotification[]; count: number }>("/api/transactions/notifications/"),
+  markAllAsRead: () => apiFetch<{ message: string }>("/api/transactions/notifications/read/", { method: "PATCH" }),
   getStreamUrl: () => `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/transactions/notifications/stream/`,
 };
 
@@ -632,7 +649,7 @@ export const signalementsApi = {
     apiFetch<PreuveSignalement>(`/api/transactions/signalements/${id}/preuves/`, { method: "POST", body: JSON.stringify(data) }),
   listeCommentaires: (id: string) =>
     apiFetch<Commentaire[]>(`/api/transactions/signalements/${id}/commentaires/`),
-  ajouterCommentaire: (id: string, data: { contenu: string; type_commentaire: "AVIS" | "JUSTIFICATION" | "ENQUETE" }) =>
+  ajouterCommentaire: (id: string, data: { contenu: string; type_commentaire: "AVIS" | "JUSTIFICATION" | "ENQUETE"; image_url?: string }) =>
     apiFetch<Commentaire>(`/api/transactions/signalements/${id}/commentaires/`, { method: "POST", body: JSON.stringify(data) }),
   lancerEnquete: (id: string) =>
     apiFetch<Signalement>(`/api/transactions/signalements/${id}/enquete/lancer/`, { method: "PATCH" }),
@@ -657,18 +674,22 @@ export interface Projet {
   nom: string;
   description: string;
   budget_alloue_fcfa: number;
+  budget_consomme_fcfa: number;
   taux_execution: number;
   statut: "BROUILLON" | "EN_ATTENTE" | "EN_COURS" | "ACHEVE" | "ANNULE" | "SOUS_ENQUETE";
   bailleur?: string | null;
   blockchain_audit_hash?: string;
+  parent_proposition?: number;
   created_at: string;
   updated_at?: string;
 }
 
 export const projetsApi = {
-  list: (communeId?: number) => {
-    const url = communeId ? `/api/communes/projets/?commune=${communeId}` : "/api/communes/projets/";
-    return apiFetch<{ results: Projet[]; count: number }>(url);
+  list: (filters?: { commune?: number }) => {
+    const search = new URLSearchParams();
+    if (filters?.commune) search.set("commune", filters.commune.toString());
+    const qs = search.toString();
+    return apiFetch<{ results: Projet[]; count: number }>(`/api/communes/projets/${qs ? `?${qs}` : ""}`);
   },
   getDetail: (id: string | number) => apiFetch<Projet>(`/api/communes/projets/${id}/`),
   update: (id: string | number, data: Partial<Projet>) =>
@@ -692,10 +713,10 @@ export const propositionsApi = {
     apiFetch<{ message: string }>(`/api/transactions/propositions/${id}/voter/`, { method: "DELETE" }),
   
   // Gouvernance Maire
-  officialiser: (id: string, tx_hash: string) =>
+  officialiser: (id: string, data: { tx_hash: string; budget_alloue_fcfa: number }) =>
     apiFetch<{ message: string; statut: string }>(`/api/transactions/propositions/${id}/officialiser/`, { 
       method: "PATCH", 
-      body: JSON.stringify({ tx_hash }) 
+      body: JSON.stringify(data) 
     }),
   cloturer: (id: string) =>
     apiFetch<{ message: string; statut: string }>(`/api/transactions/propositions/${id}/cloturer/`, { method: "PATCH" }),
@@ -704,6 +725,6 @@ export const propositionsApi = {
     apiFetch<any>(`/api/transactions/propositions/${id}/preuves/`, { method: "POST", body: JSON.stringify(data) }),
   commentaires: (id: string) =>
     apiFetch<any[]>(`/api/transactions/propositions/${id}/commentaires/`),
-  ajouterCommentaire: (id: string, data: { contenu: string; type_commentaire?: string }) =>
+  ajouterCommentaire: (id: string, data: { contenu: string; type_commentaire?: string; image_url?: string }) =>
     apiFetch<any>(`/api/transactions/propositions/${id}/commentaires/`, { method: "POST", body: JSON.stringify(data) }),
 };

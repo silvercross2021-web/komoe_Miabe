@@ -143,18 +143,23 @@ class SignalementSerializer(serializers.ModelSerializer):
     transaction_detail = TransactionSerializer(source="transaction", read_only=True)
     nb_preuves = serializers.SerializerMethodField()
     nb_votes = serializers.SerializerMethodField()
+    nb_credibles = serializers.SerializerMethodField()
+    nb_infondes = serializers.SerializerMethodField()
     pct_credible = serializers.SerializerMethodField()
+    mon_vote = serializers.SerializerMethodField()
     commentaires = serializers.SerializerMethodField()
     actions_dgddl = serializers.SerializerMethodField()
+    preuves = serializers.SerializerMethodField()
 
     class Meta:
         model = Signalement
         fields = [
             "id", "commune", "commune_detail", "sujet", "description", "transaction", "transaction_detail",
             "auteur", "auteur_detail", "statut", "is_prioritaire", "is_reviewed",
-            "nb_preuves", "nb_votes", "pct_credible", "preuves",
+            "nb_preuves", "nb_votes", "nb_credibles", "nb_infondes", "pct_credible", "mon_vote", "preuves",
             "enquete_lancee_par", "enquete_lancee_par_detail", "enquete_lancee_a",
             "resolution", "resolution_justification", "resolution_par", "resolution_par_detail", "resolution_a",
+            "blockchain_tx_hash_enquete", "blockchain_tx_hash_resolution",
             "created_by_profession", "commentaires", "actions_dgddl", "created_at", "updated_at"
         ]
         read_only_fields = [
@@ -171,6 +176,19 @@ class SignalementSerializer(serializers.ModelSerializer):
 
     def get_pct_credible(self, obj):
         return obj.pct_credible
+
+    def get_nb_credibles(self, obj):
+        return obj.nb_credibles
+
+    def get_nb_infondes(self, obj):
+        return obj.nb_infondes
+
+    def get_mon_vote(self, obj):
+        request = self.context.get("request")
+        if request and request.user and request.user.is_authenticated:
+            vote = obj.votes.filter(citoyen=request.user).first()
+            return vote.verdict if vote else None
+        return None
 
     def get_preuves(self, obj):
         return PreuveSignalementSerializer(obj.preuves.all(), many=True).data
@@ -225,12 +243,13 @@ class PropositionSerializer(serializers.ModelSerializer):
     mon_vote = serializers.SerializerMethodField()
     nb_preuves = serializers.SerializerMethodField()
     commentaires = serializers.SerializerMethodField()
+    preuves = serializers.SerializerMethodField()
 
     class Meta:
         model = PropositionDepense
         fields = [
             "id", "commune", "commune_detail", "titre", "description",
-            "categorie", "budget_demande_fcfa",
+            "categorie", "budget_demande_fcfa", "budget_alloue_fcfa",
             "soumis_par", "soumis_par_detail",
             "statut", "is_official", "maire_signature_hash", "resultat_vote_hash",
             "date_passage_officiel", "deadline_vote_officiel", "deadline_vote",
@@ -307,7 +326,7 @@ class CommentaireSerializer(serializers.ModelSerializer):
         model = CommentaireSignalement
         fields = [
             "id", "signalement", "auteur", "auteur_detail", "auteur_nom", "auteur_role",
-            "contenu", "type_commentaire", "created_at"
+            "contenu", "type_commentaire", "image_url", "created_at"
         ]
         read_only_fields = ["id", "signalement", "auteur", "created_at"]
 
@@ -351,7 +370,7 @@ class CommentairePropositionSerializer(serializers.ModelSerializer):
         model = CommentaireProposition
         fields = [
             "id", "proposition", "auteur", "auteur_detail", "auteur_nom",
-            "contenu", "type_commentaire", "created_at"
+            "contenu", "type_commentaire", "image_url", "created_at"
         ]
         read_only_fields = ["id", "proposition", "auteur", "created_at"]
 

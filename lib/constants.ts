@@ -13,6 +13,7 @@ export const POLYGON_MAINNET_CHAIN_ID = 137;
 // Utilise Alchemy : https://polygon-amoy.g.alchemy.com/v2/{CLE_API}
 export const POLYGON_RPC_URL = process.env.NEXT_PUBLIC_POLYGON_RPC_URL ?? '';
 export const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS ?? '';
+export const REOWN_PROJECT_ID = process.env.NEXT_PUBLIC_REOWN_PROJECT_ID || process.env.NEXT_PUBLIC_WALLET_PROJECT_ID || '04309ed1007e15d0f65d1a869d8d475a';
 
 // URL de l'explorateur public Polygon
 export const POLYGONSCAN_BASE_URL = 'https://amoy.polygonscan.com'; // testnet
