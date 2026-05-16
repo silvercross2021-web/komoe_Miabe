@@ -17,6 +17,8 @@ export const metadata: Metadata = {
   keywords: ["blockchain", "Polygon", "budget", "transparence", "Côte d'Ivoire", "communes", "KOMOE"],
 };
 
+import { MiaBot } from "@/components/MiaBot";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -27,7 +29,10 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <BlockchainProvider>
-            <AuthProvider>{children}</AuthProvider>
+            <AuthProvider>
+              {children}
+              <MiaBot />
+            </AuthProvider>
           </BlockchainProvider>
         </ThemeProvider>
       </body>

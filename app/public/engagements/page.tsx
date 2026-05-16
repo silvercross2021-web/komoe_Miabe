@@ -105,13 +105,32 @@ export default function EngagementsCitoyensPage() {
   const [formSuccess, setFormSuccess] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  const [fetchError, setFetchError] = useState<string | null>(null);
+
   const fetchPublications = async () => {
     setLoading(true);
+    setFetchError(null);
     try {
-      const [resS, resP] = await Promise.all([
-        signalementsApi.list({ commune: selectedCommune ? Number(selectedCommune) : undefined }),
-        propositionsApi.list({ commune: selectedCommune ? Number(selectedCommune) : undefined })
-      ]);
+      console.log("[DEBUG] Début fetchPublications...");
+      
+      let resS, resP;
+      try {
+        resS = await signalementsApi.list({ commune: selectedCommune ? Number(selectedCommune) : undefined });
+      } catch (e: any) {
+        console.error("[DEBUG] Échec signalementsApi.list:", e);
+        setFetchError(`Signalements: ${e.message || "Serveur injoignable"}`);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        resP = await propositionsApi.list({ commune: selectedCommune ? Number(selectedCommune) : undefined });
+      } catch (e: any) {
+        console.error("[DEBUG] Échec propositionsApi.list:", e);
+        setFetchError(`Propositions: ${e.message || "Serveur injoignable"}`);
+        setLoading(false);
+        return;
+      }
 
       const signalements: Publication[] = (resS.results ?? []).map(s => ({
         id: s.id,
@@ -158,7 +177,9 @@ export default function EngagementsCitoyensPage() {
 
       setPublications(merged);
     } catch (err) {
-      console.error("Fetch error (engagements):", err instanceof Error ? err.message : err);
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("Fetch error (engagements):", msg);
+      setFetchError(msg);
     } finally {
       setLoading(false);
     }
