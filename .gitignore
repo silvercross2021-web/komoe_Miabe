@@ -74,3 +74,10 @@ desktop.ini
 
 # ── Vercel ────────────────────────────────────────────────────────────────────
 .vercel
+
+# ── Fichiers sensibles & temporaires (NE PAS VERSIONNER) ──────────────────────
+IDENTIFIANTS_KOMOE_PRODUCTION.md
+mia_test_voice.wav
+mia_test_voice_v2.wav
+scratch/
+backend/list_users.py
