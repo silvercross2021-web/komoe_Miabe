@@ -11,17 +11,29 @@ import {
   ArrowLeft, AlertTriangle, MapPin, Calendar, Users,
   Loader2, CheckCircle2, ShieldAlert,
   ThumbsUp, ThumbsDown, Search as SearchIcon, Gavel, X,
+  Flame, FileSearch, FileText, Activity, Link as LinkIcon,
+  ChevronRight, MessageSquare, TrendingUp, Sparkles,
 } from "lucide-react";
 import { signalementsApi, type Signalement } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 
-const STATUT_STYLES: Record<string, string> = {
-  ACTIF:           "bg-blue-500/10 text-blue-700 border-blue-200",
-  ENQUETE_DGDDL:   "bg-orange-500/10 text-orange-700 border-orange-200",
-  VALIDE_FRAUDE:   "bg-red-500/10 text-red-700 border-red-200",
-  RESOLU:          "bg-emerald-500/10 text-emerald-700 border-emerald-200",
-  CLASSE_SANS_SUITE: "bg-gray-500/10 text-gray-700 border-gray-200",
+const STATUT_META: Record<string, { label: string; icon: any; bg: string; text: string; border: string; gradient: string; }> = {
+  NOUVEAU:       { label: "Nouveau",            icon: AlertTriangle, bg: "bg-blue-500/10",    text: "text-blue-600",    border: "border-blue-500/30",    gradient: "from-blue-500/20 to-blue-500/5" },
+  VIRAL:         { label: "Viral",              icon: Flame,         bg: "bg-amber-500/10",   text: "text-amber-600",   border: "border-amber-500/30",   gradient: "from-amber-500/20 to-amber-500/5" },
+  ENQUETE_DGDDL: { label: "Enquete en cours",   icon: FileSearch,    bg: "bg-orange-500/10",  text: "text-orange-600",  border: "border-orange-500/30",  gradient: "from-orange-500/20 to-orange-500/5" },
+  VALIDE_FRAUDE: { label: "Fraude confirmee",   icon: ShieldAlert,   bg: "bg-red-500/10",     text: "text-red-600",     border: "border-red-500/30",     gradient: "from-red-500/20 to-red-500/5" },
+  REJETE_FAUX:   { label: "Faux signalement",   icon: Gavel,         bg: "bg-zinc-500/10",    text: "text-zinc-600",    border: "border-zinc-500/30",    gradient: "from-zinc-500/20 to-zinc-500/5" },
+  CLOS:          { label: "Clos",               icon: CheckCircle2,  bg: "bg-emerald-500/10", text: "text-emerald-600", border: "border-emerald-500/30", gradient: "from-emerald-500/20 to-emerald-500/5" },
 };
+
+const PRE_ENQUETE_STATUTS = ["NOUVEAU", "VIRAL"];
+
+// Indicateur de progression du dossier
+function getProgressionStep(statut: string): { step: 1 | 2 | 3; label: string } {
+  if (statut === "NOUVEAU" || statut === "VIRAL") return { step: 1, label: "En attente d'audit" };
+  if (statut === "ENQUETE_DGDDL") return { step: 2, label: "Enquete en cours" };
+  return { step: 3, label: "Cloture" };
+}
 
 export default function ControleSignalementDetailPage() {
   const params = useParams();
@@ -159,239 +171,395 @@ export default function ControleSignalementDetailPage() {
     </div>
   );
 
-  const statutStyle = STATUT_STYLES[signalement.statut ?? "ACTIF"] ?? STATUT_STYLES.ACTIF;
+  const statutKey = signalement.statut ?? "NOUVEAU";
+  const meta = STATUT_META[statutKey] ?? STATUT_META.NOUVEAU;
+  const StatusIcon = meta.icon;
+  const isDgddl = user?.role === "DGDDL";
+  const canLancerEnquete = PRE_ENQUETE_STATUTS.includes(statutKey);
+  // Le vote citoyen "Credible/Infonde" n'est PAS destine au DGDDL :
+  // le DGDDL n'a pas a se prononcer democratiquement, il lance directement une enquete officielle.
+  const canVoterCredibilite = !isDgddl && PRE_ENQUETE_STATUTS.includes(statutKey) && !signalement.is_reviewed;
+  const progression = getProgressionStep(statutKey);
 
   return (
-    <div className="animate-in fade-in duration-500 max-w-4xl mx-auto pb-12">
+    <div className="animate-in fade-in duration-500 max-w-5xl mx-auto pb-12">
+      {/* Breadcrumb / Back */}
       <Link
         href="/controle/signalements"
-        className="inline-flex items-center text-xs font-black uppercase tracking-widest text-muted-foreground hover:text-primary mb-10 transition-colors"
+        className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-primary mb-8 transition-colors group"
       >
-        <ArrowLeft className="w-5 h-5 mr-2" /> Retour aux signalements
+        <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
+        Retour aux signalements
       </Link>
 
-      {/* En-tête */}
-      <div className="flex flex-col md:flex-row justify-between items-start gap-8 mb-12">
-        <div className="space-y-4">
-          <div className="flex items-center gap-4 flex-wrap">
-            <h2 className="text-4xl font-black text-foreground tracking-tight uppercase italic">
-              {signalement.sujet}
-            </h2>
-            <span className={`text-[10px] font-black px-3 py-1 rounded-full border ${statutStyle}`}>
-              {signalement.statut ?? "ACTIF"}
-            </span>
-            {signalement.is_prioritaire && (
-              <Badge className="bg-amber-500/10 text-amber-700 border-amber-200 text-[10px] font-black">
-                ⭐ Prioritaire
-              </Badge>
-            )}
-          </div>
-          <div className="flex flex-wrap items-center gap-6 text-muted-foreground font-bold text-xs uppercase tracking-widest italic">
-            <span className="flex items-center gap-2">
-              <MapPin size={16} className="text-primary" />
-              {signalement.commune_detail?.nom || "Non précisé"}
-            </span>
-            <span className="flex items-center gap-2">
-              <Calendar size={16} className="text-primary" />
-              {new Date(signalement.created_at).toLocaleDateString("fr-FR", { dateStyle: "long" })}
-            </span>
-          </div>
+      {/* ════════ HERO HEADER ════════ */}
+      <div className={`relative overflow-hidden rounded-[32px] border ${meta.border} bg-gradient-to-br ${meta.gradient} backdrop-blur-xl p-8 mb-8`}>
+        {/* Decorations en arriere-plan */}
+        <div className={`absolute -top-20 -right-20 w-64 h-64 ${meta.bg} rounded-full blur-3xl opacity-50 pointer-events-none`} />
+        <div className="absolute top-4 right-4 opacity-[0.04] pointer-events-none">
+          <StatusIcon className="w-40 h-40" />
         </div>
 
-        {/* Stats */}
-        <div className="flex gap-4 shrink-0">
-          <div className="flex flex-col items-center p-5 bg-primary/5 rounded-[24px] border border-primary/10 min-w-[90px]">
-            <span className="text-3xl font-black text-primary">{signalement.nb_votes}</span>
-            <span className="text-[9px] font-black text-primary/60 uppercase tracking-widest mt-1">Votes</span>
+        <div className="relative">
+          {/* Badge statut + prioritaire en haut */}
+          <div className="flex items-center gap-2 mb-5 flex-wrap">
+            <span className={`inline-flex items-center gap-1.5 text-[10px] font-black px-3 py-1.5 rounded-full border-2 ${meta.bg} ${meta.text} ${meta.border}`}>
+              <StatusIcon className="w-3 h-3" />
+              {meta.label}
+            </span>
+            {signalement.is_prioritaire && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-black px-3 py-1.5 rounded-full border-2 border-red-500/30 bg-red-500/10 text-red-600 animate-pulse">
+                <Sparkles className="w-3 h-3" />
+                PRIORITAIRE
+              </span>
+            )}
           </div>
-          <div className="flex flex-col items-center p-5 bg-emerald-500/10 rounded-[24px] border border-emerald-200 min-w-[90px]">
-            <span className="text-3xl font-black text-emerald-600">{signalement.pct_credible}%</span>
-            <span className="text-[9px] font-black text-emerald-600/70 uppercase tracking-widest mt-1">Crédible</span>
+
+          {/* Titre */}
+          <h1 className="text-3xl sm:text-4xl font-black text-foreground tracking-tight leading-tight mb-3">
+            {signalement.sujet}
+          </h1>
+
+          {/* Meta info */}
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs font-semibold text-muted-foreground mb-6">
+            <span className="inline-flex items-center gap-1.5">
+              <MapPin size={14} className="text-primary" />
+              {signalement.commune_detail?.nom || "Commune inconnue"}
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <Calendar size={14} className="text-primary" />
+              {new Date(signalement.created_at).toLocaleDateString("fr-FR", { dateStyle: "long" })}
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <Users size={14} className="text-primary" />
+              {signalement.auteur_detail?.full_name || "Anonyme"}
+            </span>
           </div>
-          <div className="flex flex-col items-center p-5 bg-purple-500/10 rounded-[24px] border border-purple-200 min-w-[90px]">
-            <span className="text-3xl font-black text-purple-600">{signalement.nb_preuves}</span>
-            <span className="text-[9px] font-black text-purple-600/70 uppercase tracking-widest mt-1">Preuves</span>
+
+          {/* Progression visuelle 3 etapes */}
+          <div className="flex items-center gap-3 mb-6">
+            {[1, 2, 3].map((step) => {
+              const isActive = progression.step >= step;
+              const isCurrent = progression.step === step;
+              return (
+                <div key={step} className="flex items-center gap-3 flex-1">
+                  <div className={`flex flex-col items-center gap-1.5 flex-1`}>
+                    <div className={`w-full h-1.5 rounded-full transition-all ${
+                      isActive ? "bg-gradient-to-r from-primary to-primary/60" : "bg-muted"
+                    } ${isCurrent ? "shadow-lg shadow-primary/30" : ""}`} />
+                    <span className={`text-[9px] font-black uppercase tracking-wider ${
+                      isCurrent ? meta.text : isActive ? "text-muted-foreground" : "text-muted-foreground/40"
+                    }`}>
+                      {step === 1 ? "Signale" : step === 2 ? "Audit" : "Cloture"}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Stats compact */}
+          <div className="grid grid-cols-3 gap-3">
+            <div className="bg-card/60 backdrop-blur-sm border border-border/50 rounded-2xl p-3 text-center">
+              <div className="flex items-center justify-center gap-1.5">
+                <Users className="w-3.5 h-3.5 text-blue-500" />
+                <span className="text-xl font-black text-foreground">{signalement.nb_votes ?? 0}</span>
+              </div>
+              <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Votes</span>
+            </div>
+            <div className="bg-card/60 backdrop-blur-sm border border-border/50 rounded-2xl p-3 text-center">
+              <div className="flex items-center justify-center gap-1.5">
+                <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
+                <span className="text-xl font-black text-emerald-600">{signalement.pct_credible ?? 0}%</span>
+              </div>
+              <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Credible</span>
+            </div>
+            <div className="bg-card/60 backdrop-blur-sm border border-border/50 rounded-2xl p-3 text-center">
+              <div className="flex items-center justify-center gap-1.5">
+                <FileText className="w-3.5 h-3.5 text-purple-500" />
+                <span className="text-xl font-black text-purple-600">{signalement.nb_preuves ?? 0}</span>
+              </div>
+              <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Preuves</span>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Contenu principal */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 mb-8">
-        {/* Détails */}
-        <Card className="lg:col-span-3 shadow-2xl border-border rounded-[40px] overflow-hidden border bg-card/50 backdrop-blur-xl">
-          <CardContent className="p-10">
-            <h3 className="text-xl font-black text-foreground mb-8 uppercase tracking-tight italic flex items-center gap-3">
-              <Users className="text-primary" size={20} /> Détails de l'incident
-            </h3>
-            <div
-              className="prose prose-sm max-w-none text-muted-foreground leading-relaxed font-medium italic mb-10"
-              dangerouslySetInnerHTML={{ __html: signalement.description }}
-            />
-
-            {/* Résolution si existante */}
-            {signalement.resolution && (
-              <div className="mt-6 p-5 bg-red-500/5 border border-red-500/20 rounded-[20px]">
-                <p className="text-[10px] font-black text-red-600 uppercase tracking-widest mb-2">Résolution</p>
-                <p className="text-sm font-bold text-foreground">{signalement.resolution}</p>
-                {signalement.resolution_justification && (
-                  <p className="text-xs text-muted-foreground mt-2">{signalement.resolution_justification}</p>
-                )}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-8">
+        {/* ═══════ COLONNE GAUCHE : DETAILS + AUTEUR + TIMELINE ═══════ */}
+        <div className="lg:col-span-3 space-y-6">
+          {/* Card Description */}
+          <Card className="border border-border/70 rounded-[28px] overflow-hidden bg-card shadow-sm">
+            <CardContent className="p-7">
+              <div className="flex items-center justify-between mb-5">
+                <h3 className="text-base font-black text-foreground tracking-tight flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center">
+                    <FileText className="w-4 h-4 text-primary" />
+                  </div>
+                  Details de l'incident
+                </h3>
               </div>
-            )}
-
-            {/* Auteur */}
-            <div className="pt-8 border-t border-border mt-8">
-              <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-4 italic">
-                Citoyen émetteur
-              </p>
-              <div className="flex items-center gap-4 p-4 bg-muted/30 rounded-[24px] border border-border">
-                <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
-                  <Users size={24} />
-                </div>
-                <div>
-                  <p className="font-black text-foreground uppercase text-xs">
-                    {signalement.auteur_detail?.full_name || "Anonyme"}
-                  </p>
-                  <p className="text-[10px] text-muted-foreground font-bold italic capitalize">
-                    {signalement.created_by_profession?.toLowerCase() || "Citoyen"}
-                  </p>
-                </div>
+              <div className="relative pl-5 border-l-2 border-primary/20">
+                <div
+                  className="prose prose-sm max-w-none text-foreground/90 leading-relaxed font-medium"
+                  dangerouslySetInnerHTML={{ __html: signalement.description }}
+                />
               </div>
-            </div>
 
-            {/* Timeline d'Audit DGDDL */}
-            {signalement.actions_dgddl && signalement.actions_dgddl.length > 0 && (
-              <div className="mt-12 pt-8 border-t border-border">
-                <h4 className="text-sm font-black uppercase tracking-widest mb-6 flex items-center gap-2">
-                  <ShieldAlert className="text-primary w-4 h-4" /> Timeline d'Audit DGDDL
-                </h4>
-                <div className="space-y-6">
-                  {signalement.actions_dgddl.map((action, idx) => (
-                    <div key={idx} className="relative pl-6 border-l-2 border-primary/20 pb-2">
-                      <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-primary border-2 border-background" />
-                      <p className="text-[10px] font-black text-primary uppercase mb-1">
-                        {new Date(action.created_at).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })} — {action.effectuee_par_nom}
-                      </p>
-                      <p className="text-xs font-bold text-foreground bg-muted/20 p-3 rounded-xl border border-border/50">
-                        {action.description}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Actions DGDDL */}
-        <div className="lg:col-span-2 space-y-6">
-          <Card className="shadow-2xl border-border rounded-[40px] overflow-hidden border bg-card/50 backdrop-blur-xl">
-            <CardContent className="p-10">
-              <h3 className="text-xl font-black text-foreground mb-6 uppercase tracking-tight italic flex items-center gap-3">
-                <ShieldAlert className="text-primary" size={20} /> Actions Contrôle
-              </h3>
-
-              {/* Statut enquête */}
-              {signalement.enquete_lancee_a && (
-                <div className="mb-4 p-4 bg-orange-500/10 rounded-[20px] border border-orange-200">
-                  <p className="text-[10px] font-black text-orange-700 uppercase tracking-widest mb-1">Enquête en cours</p>
-                  <p className="text-xs text-orange-600">
-                    Lancée le {new Date(signalement.enquete_lancee_a).toLocaleDateString("fr-FR", { dateStyle: "long" })}
-                  </p>
-                </div>
-              )}
-
-              {/* Résolution affichée */}
+              {/* Resolution si existante */}
               {signalement.resolution && (
-                <div className={`mb-4 p-4 rounded-[20px] border ${
+                <div className={`mt-6 p-5 rounded-[20px] border ${
                   signalement.resolution === "FRAUDE"
-                    ? "bg-red-500/10 border-red-200"
+                    ? "bg-red-500/5 border-red-500/30"
                     : signalement.resolution === "FAUX"
-                    ? "bg-amber-500/10 border-amber-200"
-                    : "bg-gray-500/10 border-gray-200"
+                    ? "bg-amber-500/5 border-amber-500/30"
+                    : "bg-zinc-500/5 border-zinc-500/30"
                 }`}>
-                  <p className="text-[10px] font-black uppercase tracking-widest mb-1">
-                    Résolution : {signalement.resolution}
-                  </p>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Gavel className={`w-4 h-4 ${
+                      signalement.resolution === "FRAUDE" ? "text-red-600" :
+                      signalement.resolution === "FAUX" ? "text-amber-600" : "text-zinc-600"
+                    }`} />
+                    <p className={`text-[10px] font-black uppercase tracking-widest ${
+                      signalement.resolution === "FRAUDE" ? "text-red-600" :
+                      signalement.resolution === "FAUX" ? "text-amber-600" : "text-zinc-600"
+                    }`}>Verdict DGDDL : {signalement.resolution}</p>
+                  </div>
                   {signalement.resolution_justification && (
-                    <p className="text-xs mt-1">{signalement.resolution_justification}</p>
+                    <p className="text-sm text-foreground/90 leading-relaxed">{signalement.resolution_justification}</p>
                   )}
                   {signalement.blockchain_tx_hash_resolution && (
-                    <a 
+                    <a
                       href={`https://amoy.polygonscan.com/tx/${signalement.blockchain_tx_hash_resolution}`}
                       target="_blank"
-                      className="text-[9px] font-black text-primary underline block mt-2"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 mt-3 text-[10px] font-black text-primary hover:underline"
                     >
-                      Preuve Blockchain Verdict
+                      <LinkIcon className="w-3 h-3" />
+                      Preuve blockchain du verdict
                     </a>
                   )}
                 </div>
               )}
+            </CardContent>
+          </Card>
 
-              {/* Actions DGDDL */}
-              {user?.role === "DGDDL" && (
-                <div className="space-y-3 mb-4">
-                  {/* Lancer enquête — disponible si statut ACTIF */}
-                  {signalement.statut === "ACTIF" && (
-                    <Button
-                      onClick={handleLancerEnquete}
-                      disabled={actionLoading}
-                      className="w-full bg-orange-600 hover:bg-orange-700 text-white rounded-[20px] h-12 font-black uppercase shadow-lg shadow-orange-500/20"
-                    >
-                      {actionLoading ? <Loader2 className="animate-spin w-4 h-4 mr-2" /> : <SearchIcon className="w-4 h-4 mr-2" />}
-                      Lancer une enquête
-                    </Button>
+          {/* Card Citoyen emetteur */}
+          <Card className="border border-border/70 rounded-[28px] overflow-hidden bg-card shadow-sm">
+            <CardContent className="p-6">
+              <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-3">
+                Citoyen emetteur
+              </p>
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center text-primary font-black text-base">
+                  {(signalement.auteur_detail?.full_name || "?").charAt(0).toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-black text-foreground text-sm truncate">
+                    {signalement.auteur_detail?.full_name || "Anonyme"}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider mt-0.5">
+                    {signalement.created_by_profession || "Citoyen"}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Card Transaction suspectee */}
+          {signalement.transaction_detail && (
+            <Card className="border border-border/70 rounded-[28px] overflow-hidden bg-card shadow-sm">
+              <CardContent className="p-6">
+                <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-4 flex items-center gap-2">
+                  <Activity className="w-3 h-3" />
+                  Transaction suspectee
+                </p>
+                <div className="p-5 bg-gradient-to-br from-primary/5 to-transparent rounded-[20px] border border-primary/10">
+                  <p className="text-2xl font-black text-foreground tracking-tight">
+                    {signalement.transaction_detail.montant_fcfa.toLocaleString()} <span className="text-sm font-bold text-muted-foreground">FCFA</span>
+                  </p>
+                  <p className="text-xs font-black text-primary uppercase mt-1 tracking-wider">
+                    {signalement.transaction_detail.categorie}
+                  </p>
+                  <div className="mt-4 pt-4 border-t border-primary/10 flex items-center justify-between text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                    <span>{new Date(signalement.transaction_detail.created_at).toLocaleDateString("fr-FR")}</span>
+                    <span className="px-2 py-1 bg-primary/10 text-primary rounded-full">
+                      {signalement.transaction_detail.statut}
+                    </span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Timeline d'audit DGDDL */}
+          {signalement.actions_dgddl && signalement.actions_dgddl.length > 0 && (
+            <Card className="border border-border/70 rounded-[28px] overflow-hidden bg-card shadow-sm">
+              <CardContent className="p-7">
+                <h4 className="text-base font-black text-foreground tracking-tight flex items-center gap-2.5 mb-6">
+                  <div className="w-8 h-8 rounded-xl bg-orange-500/10 flex items-center justify-center">
+                    <ShieldAlert className="w-4 h-4 text-orange-600" />
+                  </div>
+                  Timeline d'audit DGDDL
+                </h4>
+                <div className="relative space-y-5">
+                  {signalement.actions_dgddl.map((action, idx) => {
+                    const isLast = idx === (signalement.actions_dgddl?.length ?? 0) - 1;
+                    return (
+                      <div key={idx} className="relative pl-10">
+                        {/* Ligne verticale */}
+                        {!isLast && (
+                          <div className="absolute left-3.5 top-7 bottom-[-20px] w-0.5 bg-gradient-to-b from-orange-500/30 to-orange-500/0" />
+                        )}
+                        {/* Puce */}
+                        <div className="absolute left-0 top-0 w-7 h-7 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-lg shadow-orange-500/30 border-2 border-background">
+                          <ChevronRight className="w-3.5 h-3.5 text-white" />
+                        </div>
+                        <div className="bg-muted/30 dark:bg-muted/20 rounded-2xl p-4 border border-border/60">
+                          <div className="flex items-center gap-2 mb-2 flex-wrap">
+                            <span className="text-[10px] font-black text-orange-600 dark:text-orange-400 uppercase tracking-widest">
+                              {action.effectuee_par_nom}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground">
+                              {new Date(action.created_at).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}
+                            </span>
+                          </div>
+                          <p className="text-sm text-foreground/90 leading-relaxed">
+                            {action.description}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
+        {/* ═══════ COLONNE DROITE : ACTIONS DGDDL / VOTE CITOYEN ═══════ */}
+        <div className="lg:col-span-2 space-y-6 lg:sticky lg:top-6 lg:self-start">
+          <Card className="relative border border-border/70 rounded-[28px] overflow-hidden bg-card shadow-lg">
+            {/* Accent bar coloree en haut selon le statut */}
+            <div className={`absolute top-0 left-0 right-0 h-1 ${meta.bg.replace('/10', '')}`} />
+
+            <CardContent className="p-6">
+              {/* En-tete : titre adapte au role */}
+              <div className="flex items-center gap-2.5 mb-5">
+                {isDgddl ? (
+                  <>
+                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-md shadow-orange-500/30">
+                      <ShieldAlert className="w-4 h-4 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-black text-foreground tracking-tight leading-none">Actions Controle</h3>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">Reserve au DGDDL</p>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-md shadow-blue-500/30">
+                      <Users className="w-4 h-4 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-black text-foreground tracking-tight leading-none">Votre avis</h3>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">Vote citoyen democratique</p>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Bandeau "Enquete lancee le ..." si statut ENQUETE_DGDDL */}
+              {signalement.enquete_lancee_a && (
+                <div className="mb-4 px-4 py-3 bg-orange-500/5 border border-orange-500/20 rounded-2xl flex items-center gap-2.5">
+                  <Activity className="w-3.5 h-3.5 text-orange-600 shrink-0" />
+                  <p className="text-[10px] text-orange-700 dark:text-orange-300 font-bold">
+                    Enquete lancee le {new Date(signalement.enquete_lancee_a).toLocaleDateString("fr-FR", { dateStyle: "long" })}
+                  </p>
+                </div>
+              )}
+
+              {/* ═══ ACTIONS RESERVEES AU DGDDL ═══ */}
+              {isDgddl && (
+                <div className="space-y-4 mb-4">
+                  {/* ETAPE 1 : Lancer enquete formelle */}
+                  {canLancerEnquete && (
+                    <div className="relative p-5 bg-gradient-to-br from-orange-50 to-orange-100/50 dark:from-orange-950/30 dark:to-orange-900/10 border border-orange-200/70 dark:border-orange-500/20 rounded-[24px] overflow-hidden">
+                      <div className="absolute top-3 right-3 text-[9px] font-black uppercase tracking-widest text-orange-600/60 dark:text-orange-400/60">Etape 1</div>
+                      <div className="flex items-start gap-3 mb-4">
+                        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-lg shadow-orange-500/30 shrink-0">
+                          <ShieldAlert className="w-4 h-4 text-white" />
+                        </div>
+                        <div>
+                          <p className="text-[11px] font-black uppercase text-orange-700 dark:text-orange-300 tracking-wider">Action requise</p>
+                          <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">
+                            Ouvrez un dossier d'audit public ancre sur la blockchain. Le Maire sera notifie automatiquement.
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        onClick={handleLancerEnquete}
+                        disabled={actionLoading}
+                        className="w-full bg-gradient-to-br from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-[16px] h-12 font-black uppercase shadow-lg shadow-orange-500/30 transition-all hover:scale-[1.01]"
+                      >
+                        {actionLoading ? <Loader2 className="animate-spin w-4 h-4 mr-2" /> : <SearchIcon className="w-4 h-4 mr-2" />}
+                        Lancer une enquete formelle
+                      </Button>
+                    </div>
                   )}
 
-                  {/* Ajouter une note d'enquête */}
-                  {signalement.statut === "ENQUETE_DGDDL" && !showNoteForm && !showResoudreForm && (
-                    <Button
-                      onClick={() => setShowNoteForm(true)}
-                      variant="outline"
-                      className="w-full rounded-[20px] h-12 font-black uppercase border-primary/20 text-primary"
-                    >
-                      Ajouter une note d'audit
-                    </Button>
+                  {/* ETAPE 2 : Pendant l'enquete (notes + verdict) */}
+                  {statutKey === "ENQUETE_DGDDL" && !showNoteForm && !showResoudreForm && (
+                    <div className="grid grid-cols-2 gap-3">
+                      <Button
+                        onClick={() => setShowNoteForm(true)}
+                        variant="outline"
+                        className="rounded-[16px] h-14 font-black uppercase text-[10px] border-2 border-primary/30 text-primary hover:bg-primary/5 flex flex-col gap-1"
+                      >
+                        <span className="text-base">📝</span>
+                        Note d'audit
+                      </Button>
+                      <Button
+                        onClick={() => setShowResoudreForm(true)}
+                        disabled={actionLoading}
+                        className="bg-gradient-to-br from-purple-500 to-purple-700 hover:from-purple-600 hover:to-purple-800 text-white rounded-[16px] h-14 font-black uppercase text-[10px] shadow-lg shadow-purple-500/30 flex flex-col gap-1"
+                      >
+                        <Gavel className="w-4 h-4" />
+                        Verdict
+                      </Button>
+                    </div>
                   )}
 
+                  {/* Formulaire note */}
                   {showNoteForm && (
-                    <form onSubmit={handleAddNote} className="space-y-3 p-4 bg-primary/5 rounded-[20px] border border-primary/20">
+                    <form onSubmit={handleAddNote} className="space-y-3 p-4 bg-primary/5 rounded-[20px] border border-primary/20 animate-in fade-in slide-in-from-top-2 duration-300">
+                      <div className="flex items-center justify-between">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-primary">Nouvelle note d'audit</p>
+                        <button type="button" onClick={() => setShowNoteForm(false)}>
+                          <X size={14} className="text-muted-foreground hover:text-foreground" />
+                        </button>
+                      </div>
                       <textarea
                         value={noteEnquete}
                         onChange={e => setNoteEnquete(e.target.value)}
-                        placeholder="Observation d'enquête..."
+                        placeholder="Observation d'enquete (visible publiquement)..."
                         rows={3}
                         required
-                        className="w-full px-3 py-2 bg-background border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                        className="w-full px-3 py-2 bg-background border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
                       />
-                      <div className="flex gap-2">
-                        <Button type="submit" disabled={actionLoading} className="flex-1 rounded-xl h-10 font-black uppercase text-[10px]">
-                          Enregistrer
-                        </Button>
-                        <Button type="button" variant="ghost" onClick={() => setShowNoteForm(false)} className="rounded-xl h-10 px-3">
-                          Annuler
-                        </Button>
-                      </div>
+                      <Button type="submit" disabled={actionLoading} className="w-full rounded-xl h-10 font-black uppercase text-[10px]">
+                        {actionLoading ? <Loader2 className="animate-spin w-3 h-3 mr-2" /> : null}
+                        Enregistrer la note
+                      </Button>
                     </form>
-                  )}
-
-                  {/* Résoudre enquête — disponible si statut ENQUETE_DGDDL */}
-                  {signalement.statut === "ENQUETE_DGDDL" && !showResoudreForm && (
-                    <Button
-                      onClick={() => setShowResoudreForm(true)}
-                      disabled={actionLoading}
-                      className="w-full bg-purple-600 hover:bg-purple-700 text-white rounded-[20px] h-12 font-black uppercase shadow-lg shadow-purple-500/20"
-                    >
-                      <Gavel className="w-4 h-4 mr-2" />
-                      Rendre un verdict
-                    </Button>
                   )}
 
                   {/* Formulaire résolution */}
                   {showResoudreForm && (
-                    <form onSubmit={handleResoudreEnquete} className="space-y-3 p-4 bg-muted/20 rounded-[20px] border border-border">
-                      <div className="flex items-center justify-between mb-2">
-                        <p className="text-[10px] font-black uppercase tracking-widest">Verdict DGDDL</p>
+                    <form onSubmit={handleResoudreEnquete} className="space-y-3 p-4 bg-purple-500/5 rounded-[20px] border border-purple-200 dark:border-purple-500/20 animate-in fade-in slide-in-from-top-2 duration-300">
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-purple-700 dark:text-purple-300">Verdict officiel DGDDL</p>
                         <button type="button" onClick={() => setShowResoudreForm(false)}>
                           <X size={14} className="text-muted-foreground hover:text-foreground" />
                         </button>
@@ -399,11 +567,11 @@ export default function ControleSignalementDetailPage() {
                       <select
                         value={resolution}
                         onChange={e => setResolution(e.target.value as any)}
-                        className="w-full px-3 py-2 bg-background border border-border rounded-xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary"
+                        className="w-full px-3 py-2 bg-background border border-border rounded-xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-purple-500"
                       >
-                        <option value="FRAUDE">🔴 FRAUDE — Confirmée</option>
-                        <option value="FAUX">⚠️ FAUX — Signalement abusif</option>
-                        <option value="INFONDE">⚪ INFONDÉ — Classé sans suite</option>
+                        <option value="FRAUDE">FRAUDE - Confirmee</option>
+                        <option value="FAUX">FAUX - Signalement abusif</option>
+                        <option value="INFONDE">INFONDE - Classe sans suite</option>
                       </select>
 
                       {resolution === "FRAUDE" && (
@@ -413,7 +581,7 @@ export default function ControleSignalementDetailPage() {
                             type="number"
                             value={montantCorrige}
                             onChange={e => setMontantCorrige(e.target.value)}
-                            placeholder="Montant à régulariser..."
+                            placeholder="Montant a regulariser..."
                             className="w-full px-3 py-2 bg-red-500/5 border border-red-200 rounded-xl text-sm font-black text-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
                           />
                         </div>
@@ -422,15 +590,15 @@ export default function ControleSignalementDetailPage() {
                       <textarea
                         value={justification}
                         onChange={e => setJustification(e.target.value)}
-                        placeholder="Justification d'audit obligatoire..."
+                        placeholder="Justification d'audit obligatoire (visible publiquement)..."
                         rows={3}
                         required
-                        className="w-full px-3 py-2 bg-background border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                        className="w-full px-3 py-2 bg-background border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
                       />
                       <Button
                         type="submit"
                         disabled={actionLoading || !justification.trim()}
-                        className="w-full bg-primary hover:bg-primary/90 text-white font-black rounded-xl h-10"
+                        className="w-full bg-gradient-to-br from-purple-500 to-purple-700 hover:from-purple-600 hover:to-purple-800 text-white font-black rounded-xl h-11"
                       >
                         {actionLoading ? <Loader2 className="animate-spin w-4 h-4 mr-2" /> : <Gavel className="w-4 h-4 mr-2" />}
                         Publier le verdict officiel
@@ -438,76 +606,90 @@ export default function ControleSignalementDetailPage() {
                     </form>
                   )}
 
-                  {/* Vote crédibilité */}
-                  {!signalement.is_reviewed && signalement.statut === "ACTIF" && (
-                    <div className="flex gap-2 pt-2">
-                      <Button
-                        onClick={() => handleVote("CREDIBLE")}
-                        disabled={!!votingId}
-                        className={`flex-1 rounded-[20px] h-10 font-black text-xs uppercase border-2 transition-all ${
-                          signalement.mon_vote === "CREDIBLE"
-                            ? "bg-emerald-600 border-emerald-600 text-white"
-                            : "bg-transparent border-emerald-600/20 text-emerald-600 hover:bg-emerald-50"
-                        }`}
-                      >
-                        {votingId === "CREDIBLE" ? <Loader2 className="animate-spin w-3 h-3 mr-1" /> : <ThumbsUp className="w-3 h-3 mr-1" />}
-                        Crédible
-                      </Button>
-                      <Button
-                        onClick={() => handleVote("INFONDE")}
-                        disabled={!!votingId}
-                        className={`flex-1 rounded-[20px] h-10 font-black text-xs uppercase border-2 transition-all ${
-                          signalement.mon_vote === "INFONDE"
-                            ? "bg-rose-600 border-rose-600 text-white"
-                            : "bg-transparent border-rose-600/20 text-rose-600 hover:bg-rose-50"
-                        }`}
-                      >
-                        {votingId === "INFONDE" ? <Loader2 className="animate-spin w-3 h-3 mr-1" /> : <ThumbsDown className="w-3 h-3 mr-1" />}
-                        Infondé
-                      </Button>
+                  {/* Message neutre quand aucune action n'est dispo (statut terminal) */}
+                  {!canLancerEnquete && statutKey !== "ENQUETE_DGDDL" && !showNoteForm && !showResoudreForm && (
+                    <div className="flex items-center gap-3 p-4 bg-muted/30 rounded-[20px] border border-border">
+                      <CheckCircle2 className="text-muted-foreground shrink-0" size={18} />
+                      <p className="text-[11px] text-muted-foreground leading-relaxed">
+                        Aucune action DGDDL en attente. Le dossier est cloture ou n'est pas dans une phase active.
+                      </p>
                     </div>
                   )}
                 </div>
               )}
 
-              {signalement.statut === "VALIDE_FRAUDE" && (
-                <div className="flex items-center gap-3 p-4 bg-red-500/10 rounded-[20px] border border-red-200">
-                  <CheckCircle2 className="text-red-600" size={20} />
-                  <p className="text-xs font-black text-red-700 uppercase">Fraude confirmée</p>
-                </div>
-              )}
-
-              {(signalement.statut === "CLOS" || signalement.statut === "REJETE_FAUX") && (
-                <div className="flex items-center gap-3 p-4 bg-emerald-500/10 rounded-[20px] border border-emerald-200">
-                  <CheckCircle2 className="text-emerald-600" size={20} />
-                  <p className="text-xs font-black text-emerald-700 uppercase">Dossier clos</p>
-                </div>
-              )}
-
-              {/* Contexte de la Transaction */}
-              {signalement.transaction_detail && (
-                <div className="mt-6 pt-6 border-t border-border">
-                  <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-3 italic">Transaction suspectée</p>
-                  <div className="p-4 bg-muted/20 rounded-[24px] border border-border/50">
-                    <p className="text-lg font-black text-foreground">
-                      {signalement.transaction_detail.montant_fcfa.toLocaleString()} FCFA
-                    </p>
-                    <p className="text-[10px] font-black text-primary uppercase mt-1">
-                      {signalement.transaction_detail.categorie}
-                    </p>
-                    <div className="mt-3 flex items-center justify-between text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
-                      <span>{new Date(signalement.transaction_detail.created_at).toLocaleDateString()}</span>
-                      <span className="px-2 py-0.5 bg-primary/10 text-primary rounded-full">
-                        {signalement.transaction_detail.statut}
-                      </span>
+              {/* ═══ VOTE CITOYEN (non-DGDDL uniquement) ═══ */}
+              {canVoterCredibilite && (
+                <div className="space-y-3 mb-4 pt-4 border-t border-border/50">
+                  <div className="flex items-start gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500/15 to-blue-500/5 flex items-center justify-center shrink-0">
+                      <Users className="w-4 h-4 text-blue-600" />
                     </div>
+                    <div>
+                      <p className="text-[11px] font-black uppercase text-blue-700 dark:text-blue-300 tracking-wider">Vote de credibilite</p>
+                      <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">
+                        Donnez votre avis citoyen. {signalement.nb_votes ?? 0} vote(s) deja enregistre(s).
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={() => handleVote("CREDIBLE")}
+                      disabled={!!votingId}
+                      className={`flex-1 rounded-[16px] h-11 font-black text-xs uppercase border-2 transition-all ${
+                        signalement.mon_vote === "CREDIBLE"
+                          ? "bg-emerald-600 border-emerald-600 text-white shadow-lg shadow-emerald-500/30"
+                          : "bg-transparent border-emerald-600/30 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/20"
+                      }`}
+                    >
+                      {votingId === "CREDIBLE" ? <Loader2 className="animate-spin w-3 h-3 mr-1" /> : <ThumbsUp className="w-3 h-3 mr-1" />}
+                      Credible
+                    </Button>
+                    <Button
+                      onClick={() => handleVote("INFONDE")}
+                      disabled={!!votingId}
+                      className={`flex-1 rounded-[16px] h-11 font-black text-xs uppercase border-2 transition-all ${
+                        signalement.mon_vote === "INFONDE"
+                          ? "bg-rose-600 border-rose-600 text-white shadow-lg shadow-rose-500/30"
+                          : "bg-transparent border-rose-600/30 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20"
+                      }`}
+                    >
+                      {votingId === "INFONDE" ? <Loader2 className="animate-spin w-3 h-3 mr-1" /> : <ThumbsDown className="w-3 h-3 mr-1" />}
+                      Infonde
+                    </Button>
                   </div>
                 </div>
               )}
 
-              <div className="mt-4 pt-4 border-t border-border text-center">
-                <p className="text-[10px] text-muted-foreground font-bold italic">
-                  Utilisez la section commentaires pour documenter vos observations publiques.
+              {/* ═══ BADGES STATUT TERMINAL ═══ */}
+              {statutKey === "VALIDE_FRAUDE" && (
+                <div className="flex items-center gap-3 p-4 bg-red-500/10 rounded-2xl border border-red-500/30">
+                  <div className="w-9 h-9 rounded-xl bg-red-500/20 flex items-center justify-center shrink-0">
+                    <ShieldAlert className="text-red-600" size={18} />
+                  </div>
+                  <div>
+                    <p className="text-xs font-black text-red-700 dark:text-red-300 uppercase">Fraude confirmee</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">Dossier valide par le DGDDL</p>
+                  </div>
+                </div>
+              )}
+
+              {(statutKey === "CLOS" || statutKey === "REJETE_FAUX") && (
+                <div className="flex items-center gap-3 p-4 bg-emerald-500/10 rounded-2xl border border-emerald-500/30">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-500/20 flex items-center justify-center shrink-0">
+                    <CheckCircle2 className="text-emerald-600" size={18} />
+                  </div>
+                  <div>
+                    <p className="text-xs font-black text-emerald-700 dark:text-emerald-300 uppercase">Dossier clos</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">Aucune action requise</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Footer subtil */}
+              <div className="mt-5 pt-4 border-t border-border/50">
+                <p className="text-[10px] text-muted-foreground/80 leading-relaxed text-center">
+                  Toutes les actions DGDDL sont publiques et ancrees sur la blockchain.
                 </p>
               </div>
             </CardContent>
@@ -515,11 +697,22 @@ export default function ControleSignalementDetailPage() {
         </div>
       </div>
 
-      {/* Section Commentaires */}
-      <SectionCommentaires
-        signalementId={id}
-        commentairesInitiaux={signalement.commentaires ?? []}
-      />
+      {/* ════════ SECTION COMMENTAIRES ════════ */}
+      <div className="mt-8">
+        <div className="flex items-center gap-3 mb-5 px-2">
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center">
+            <MessageSquare className="w-4 h-4 text-primary" />
+          </div>
+          <div>
+            <h3 className="text-lg font-black text-foreground tracking-tight">Conversation publique</h3>
+            <p className="text-xs text-muted-foreground">Discussion ouverte autour du signalement</p>
+          </div>
+        </div>
+        <SectionCommentaires
+          signalementId={id}
+          commentairesInitiaux={signalement.commentaires ?? []}
+        />
+      </div>
     </div>
   );
 }

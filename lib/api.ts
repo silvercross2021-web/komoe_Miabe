@@ -489,7 +489,7 @@ export interface Signalement {
   transaction_detail?: Transaction;
   auteur: string | null;
   auteur_detail: UserProfile | null;
-  statut: "NOUVEAU" | "ACTIF" | "VIRAL" | "ENQUETE_DGDDL" | "VALIDE_FRAUDE" | "REJETE_FAUX" | "CLOS";
+  statut: "NOUVEAU" | "VIRAL" | "ENQUETE_DGDDL" | "VALIDE_FRAUDE" | "REJETE_FAUX" | "CLOS";
   is_prioritaire: boolean;
   is_reviewed: boolean;
   nb_preuves: number;
@@ -634,10 +634,12 @@ export const notificationsApi = {
 };
 
 export const signalementsApi = {
-  list: (params?: { commune?: number; mes_signalements?: boolean }) => {
+  list: (params?: { commune?: number; mes_signalements?: boolean; mes_votes?: boolean; statut?: string }) => {
     const search = new URLSearchParams();
     if (params?.commune) search.set("commune", params.commune.toString());
     if (params?.mes_signalements) search.set("mes_signalements", "true");
+    if (params?.mes_votes) search.set("mes_votes", "true");
+    if (params?.statut) search.set("statut", params.statut);
     return apiFetch<{ results: Signalement[]; count: number }>(`/api/transactions/signalements/?${search.toString()}`);
   },
   detail: (id: string) => apiFetch<Signalement>(`/api/transactions/signalements/${id}/`),

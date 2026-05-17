@@ -6,12 +6,13 @@ import { notificationsApi, type AppNotification } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
-import { 
-  Popover, 
-  PopoverContent, 
-  PopoverTrigger 
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger
 } from "@/components/ui/Popover";
 import { formatDateShort, stripHtml } from "@/lib/constants";
+import { pushToast, notifTypeToVariant } from "@/lib/toast";
 
 export function NotificationBell() {
   const { user } = useAuth();
@@ -32,22 +33,52 @@ export function NotificationBell() {
   }, [user]);
 
   useEffect(() => {
-    if (user) {
-      fetchNotifications();
-      
-      // SSE Stream
+    if (!user) return;
+
+    fetchNotifications();
+
+    // Polling de secours toutes les 30s (au cas ou le SSE est down)
+    const pollInterval = window.setInterval(fetchNotifications, 30000);
+
+    // SSE Stream pour notifications temps reel
+    let eventSource: EventSource | null = null;
+    try {
       const streamUrl = notificationsApi.getStreamUrl();
-      const eventSource = new EventSource(streamUrl, { withCredentials: true });
-      
+      eventSource = new EventSource(streamUrl, { withCredentials: true });
+
       eventSource.onmessage = (event) => {
-        const newNotif = JSON.parse(event.data);
-        setNotifications(prev => [newNotif, ...prev]);
-        setUnreadCount(prev => prev + 1);
-        // Toast logic could go here
+        try {
+          const newNotif = JSON.parse(event.data) as AppNotification;
+          setNotifications((prev) => {
+            // Eviter les doublons
+            if (prev.some((n) => n.id === newNotif.id)) return prev;
+            return [newNotif, ...prev];
+          });
+          setUnreadCount((prev) => prev + 1);
+
+          // Toast visuel en temps reel
+          pushToast({
+            title: newNotif.titre,
+            description: stripHtml(newNotif.message),
+            variant: notifTypeToVariant(newNotif.type_notif),
+            duration: 6000,
+          });
+        } catch (err) {
+          console.warn("[NotifBell] Parse SSE:", err);
+        }
       };
 
-      return () => eventSource.close();
+      eventSource.onerror = () => {
+        // Echec silencieux : le polling prend le relais
+      };
+    } catch (err) {
+      console.warn("[NotifBell] SSE non disponible, fallback polling:", err);
     }
+
+    return () => {
+      window.clearInterval(pollInterval);
+      if (eventSource) eventSource.close();
+    };
   }, [user, fetchNotifications]);
 
   const handleMarkAsRead = async () => {

@@ -384,11 +384,36 @@ export default function SignalementDetailPage() {
                     </div>
                     <div className={`w-[calc(100%-3rem)] md:w-[calc(50%-2rem)] p-6 rounded-2xl border shadow-lg ${signalement.statut === "VALIDE_FRAUDE" ? "bg-red-600 text-white" : "bg-emerald-600 text-white"}`}>
                       <h4 className="font-black text-lg mb-1 uppercase">VERDICT FINAL</h4>
-                      <p className="text-white/90 text-sm italic mb-3">"{signalement.resolution_justification}"</p>
+                      <p className="text-white/90 text-sm italic mb-3">&quot;{signalement.resolution_justification}&quot;</p>
                       <div className="flex items-center justify-between mt-4 pt-4 border-t border-white/20">
                         <div className="text-xs font-bold opacity-80">RÉSOLU LE {formatDateShort(signalement.resolution_a || "")}</div>
                         <Badge className="bg-white text-slate-900">{signalement.resolution}</Badge>
                       </div>
+                      {(signalement.blockchain_tx_hash_resolution || signalement.blockchain_tx_hash_enquete) && (
+                        <div className="mt-4 pt-4 border-t border-white/20 space-y-2">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-white/80">Traçabilité blockchain</p>
+                          {signalement.blockchain_tx_hash_enquete && (
+                            <a
+                              href={`https://amoy.polygonscan.com/tx/${signalement.blockchain_tx_hash_enquete}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="block text-[10px] font-bold text-white/95 hover:underline truncate"
+                            >
+                              ↳ Enquête lancée : {signalement.blockchain_tx_hash_enquete.slice(0, 12)}…
+                            </a>
+                          )}
+                          {signalement.blockchain_tx_hash_resolution && (
+                            <a
+                              href={`https://amoy.polygonscan.com/tx/${signalement.blockchain_tx_hash_resolution}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="block text-[10px] font-bold text-white/95 hover:underline truncate"
+                            >
+                              ↳ Verdict scellé : {signalement.blockchain_tx_hash_resolution.slice(0, 12)}…
+                            </a>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 ) : null}

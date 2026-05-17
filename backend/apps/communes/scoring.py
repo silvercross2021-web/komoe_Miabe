@@ -33,11 +33,22 @@ def calculer_score_composite(commune):
     nb_propositions = commune.propositions.count()
     score_engagement = min(nb_propositions * 10, 100)
     
-    # 5. Intégrité
-    nb_signalements = Signalement.objects.filter(commune=commune).count()
-    # Pénalité si trop de signalements par rapport aux transactions
-    ratio_signalement = (nb_signalements / total_tx) if total_tx > 0 else 0
-    score_integrite = max(0, 100 - (ratio_signalement * 500))
+    # 5. Integrite (seules les fraudes CONFIRMEES par le DGDDL penalisent vraiment)
+    #    Les signalements rejetes comme FAUX prouvent au contraire la solidite de la commune.
+    nb_fraudes_confirmees = Signalement.objects.filter(
+        commune=commune,
+        statut="VALIDE_FRAUDE",
+    ).count()
+    nb_signalements_rejetes = Signalement.objects.filter(
+        commune=commune,
+        statut__in=["REJETE_FAUX", "CLOS"],
+    ).count()
+    # Penalite forte par fraude confirmee (50 pts perdus chacune, ratio 1/total_tx)
+    ratio_fraude = (nb_fraudes_confirmees / total_tx) if total_tx > 0 else 0
+    penalite_fraude = ratio_fraude * 500
+    # Bonus modere pour signalements rejetes (preuve d'innocence audite)
+    bonus_innocence = min(nb_signalements_rejetes * 5, 25)
+    score_integrite = max(0, min(100, 100 - penalite_fraude + bonus_innocence))
     
     # Pondération finale
     score_final = (

@@ -18,6 +18,7 @@ export const metadata: Metadata = {
 };
 
 import { MiaBot } from "@/components/MiaBot";
+import { ToastContainer } from "@/components/layout/ToastContainer";
 
 export default function RootLayout({
   children,
@@ -32,6 +33,7 @@ export default function RootLayout({
             <AuthProvider>
               {children}
               <MiaBot />
+              <ToastContainer />
             </AuthProvider>
           </BlockchainProvider>
         </ThemeProvider>

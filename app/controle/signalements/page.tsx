@@ -3,16 +3,19 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import { AlertCircle, Search, Download, Loader2, Filter, ThumbsUp, ThumbsDown, CheckCircle2, Clock, MapPin, ExternalLink } from "lucide-react";
+import { AlertCircle, Search, Download, Loader2, Filter, CheckCircle2, Clock, MapPin, ExternalLink, ShieldAlert, Gavel, Flame, FileSearch } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { signalementsApi, Signalement } from "@/lib/api";
 import { formatDateShort } from "@/lib/constants";
 
-const VERDICT_COLORS: Record<string, "success" | "destructive" | "secondary"> = {
-  CREDIBLE: "success",
-  INFONDE: "destructive",
-  PENDING: "secondary",
+const STATUT_META: Record<string, { label: string; icon: any; bg: string; text: string; border: string; }> = {
+  NOUVEAU:       { label: "Nouveau",           icon: AlertCircle, bg: "bg-blue-500/10",    text: "text-blue-600",    border: "border-blue-500/20" },
+  VIRAL:         { label: "Viral",              icon: Flame,       bg: "bg-amber-500/10",   text: "text-amber-600",   border: "border-amber-500/20" },
+  ENQUETE_DGDDL: { label: "Enquete en cours",   icon: FileSearch,  bg: "bg-orange-500/10",  text: "text-orange-600",  border: "border-orange-500/20" },
+  VALIDE_FRAUDE: { label: "Fraude confirmee",   icon: ShieldAlert, bg: "bg-red-500/10",     text: "text-red-600",     border: "border-red-500/20" },
+  REJETE_FAUX:   { label: "Faux signalement",   icon: Gavel,       bg: "bg-zinc-500/10",    text: "text-zinc-600",    border: "border-zinc-500/20" },
+  CLOS:          { label: "Clos",               icon: CheckCircle2, bg: "bg-emerald-500/10", text: "text-emerald-600", border: "border-emerald-500/20" },
 };
 
 export default function SignalementsPage() {
@@ -21,7 +24,6 @@ export default function SignalementsPage() {
   const [search, setSearch] = useState("");
   const [reviewedFilter, setReviewedFilter] = useState<boolean | null>(null);
   const [isExporting, setIsExporting] = useState(false);
-  const [votingId, setVotingId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchSignalements();
@@ -50,30 +52,6 @@ export default function SignalementsPage() {
       setSignalements([]);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleVote = async (id: string, verdict: "CREDIBLE" | "INFONDE") => {
-    // Confirmation pour éviter votes accidentels
-    const verdict_label = verdict === "CREDIBLE" ? "CRÉDIBLE" : "INFONDÉ";
-    if (!confirm(`Êtes-vous certain que ce signalement est ${verdict_label} ?\n\nCette action est irréversible.`)) {
-      return;
-    }
-
-    setVotingId(id);
-    try {
-      await signalementsApi.voter(id, verdict);
-      // Update optimiste au lieu de full refetch
-      setSignalements(prevSignalements =>
-        prevSignalements.map(s =>
-          s.id === id ? { ...s, is_reviewed: true } : s
-        )
-      );
-    } catch (err) {
-      alert("Erreur vote: " + (err as any).message);
-      setVotingId(null);
-    } finally {
-      setVotingId(null);
     }
   };
 
@@ -117,10 +95,16 @@ export default function SignalementsPage() {
 
   const stats = {
     total: signalements.length,
-    reviewed: signalements.filter(s => s.is_reviewed).length,
-    pending: signalements.filter(s => !s.is_reviewed).length,
-    withProof: signalements.filter(s => s.nb_preuves > 0).length,
+    aTraiter: signalements.filter(s => s.statut === "NOUVEAU" || s.statut === "VIRAL").length,
+    enCours: signalements.filter(s => s.statut === "ENQUETE_DGDDL").length,
+    fraudes: signalements.filter(s => s.statut === "VALIDE_FRAUDE").length,
+    faux: signalements.filter(s => s.statut === "REJETE_FAUX").length,
+    clos: signalements.filter(s => s.statut === "CLOS").length,
+    viraux: signalements.filter(s => s.statut === "VIRAL").length,
+    avecPreuves: signalements.filter(s => s.nb_preuves > 0).length,
   };
+  const totalTraites = stats.fraudes + stats.faux + stats.clos;
+  const tauxFraude = totalTraites > 0 ? Math.round((stats.fraudes / totalTraites) * 100) : 0;
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 space-y-8">
@@ -139,22 +123,48 @@ export default function SignalementsPage() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
+      {/* KPI principaux DGDDL */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: "Total signalements", value: stats.total.toString(), color: "text-foreground", icon: AlertCircle },
-          { label: "Révisés", value: stats.reviewed.toString(), color: "text-emerald-500", icon: CheckCircle2 },
-          { label: "En attente", value: stats.pending.toString(), color: "text-amber-500", icon: Clock },
-          { label: "Avec preuves", value: stats.withProof.toString(), color: "text-primary", icon: MapPin },
-        ].map(({ label, value, color, icon: Icon }) => (
-          <Card key={label} className="rounded-[24px] border-border/50 shadow-sm overflow-hidden">
-            <CardContent className="p-6 relative">
-              <Icon className={`w-12 h-12 ${color} absolute -right-2 -bottom-2 opacity-5`} />
-              <p className="text-3xl font-black text-foreground">{loading ? "…" : value}</p>
-              <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mt-1">{label}</p>
+          { label: "A traiter", value: stats.aTraiter, color: "text-orange-600", bg: "bg-orange-500/10", border: "border-orange-500/30", icon: AlertCircle, sub: `dont ${stats.viraux} viraux` },
+          { label: "Enquetes en cours", value: stats.enCours, color: "text-amber-600", bg: "bg-amber-500/10", border: "border-amber-500/30", icon: FileSearch, sub: "audits actifs" },
+          { label: "Fraudes confirmees", value: stats.fraudes, color: "text-red-600", bg: "bg-red-500/10", border: "border-red-500/30", icon: ShieldAlert, sub: `${tauxFraude}% de taux de fraude` },
+          { label: "Total traites", value: totalTraites, color: "text-emerald-600", bg: "bg-emerald-500/10", border: "border-emerald-500/30", icon: CheckCircle2, sub: `${stats.faux} faux, ${stats.clos} classes` },
+        ].map(({ label, value, color, bg, border, icon: Icon, sub }) => (
+          <Card key={label} className={`rounded-[24px] border-2 ${border} overflow-hidden ${bg}`}>
+            <CardContent className="p-5 relative">
+              <Icon className={`w-20 h-20 ${color} absolute -right-2 -bottom-2 opacity-[0.08]`} />
+              <div className="relative">
+                <p className={`text-3xl font-black ${color}`}>{loading ? "…" : value}</p>
+                <p className={`text-[10px] font-black uppercase tracking-widest mt-1 ${color}`}>{label}</p>
+                <p className="text-[9px] font-bold text-muted-foreground mt-1.5">{sub}</p>
+              </div>
             </CardContent>
           </Card>
         ))}
       </div>
+
+      {/* Repartition verdicts (barre visuelle) */}
+      {totalTraites > 0 && (
+        <Card className="rounded-[24px] border border-border/50 shadow-sm overflow-hidden">
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-[11px] font-black uppercase tracking-widest text-foreground">Repartition des verdicts</p>
+              <p className="text-[10px] font-bold text-muted-foreground">{totalTraites} dossiers traites</p>
+            </div>
+            <div className="flex h-3 rounded-full overflow-hidden bg-muted/30">
+              <div className="bg-red-500" style={{ width: `${(stats.fraudes / totalTraites) * 100}%` }} title={`${stats.fraudes} fraudes`} />
+              <div className="bg-amber-500" style={{ width: `${(stats.faux / totalTraites) * 100}%` }} title={`${stats.faux} faux`} />
+              <div className="bg-emerald-500" style={{ width: `${(stats.clos / totalTraites) * 100}%` }} title={`${stats.clos} classes`} />
+            </div>
+            <div className="flex items-center gap-4 mt-3 text-[10px] font-bold">
+              <span className="inline-flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-red-500" />Fraude {stats.fraudes}</span>
+              <span className="inline-flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-amber-500" />Faux {stats.faux}</span>
+              <span className="inline-flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-500" />Classe {stats.clos}</span>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card className="rounded-[32px] overflow-hidden border shadow-xl">
         <CardHeader className="bg-muted/30 border-b border-border p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -202,90 +212,83 @@ export default function SignalementsPage() {
                 Aucun signalement trouvé pour cette recherche.
               </div>
             )}
-            {!loading && filtered.map((s) => (
-              <div key={s.id} className="relative group overflow-hidden">
-                <Link 
+            {!loading && filtered.map((s) => {
+              const meta = STATUT_META[s.statut] ?? STATUT_META.NOUVEAU;
+              const StatusIcon = meta.icon;
+              const needsAttention = s.statut === "NOUVEAU" || s.statut === "VIRAL";
+              return (
+                <Link
+                  key={s.id}
                   href={`/controle/signalements/${s.id}`}
-                  className="flex items-start justify-between p-6 hover:bg-muted/50 transition-all duration-300 flex-1 cursor-pointer"
+                  className="relative group block hover:bg-muted/40 transition-all duration-200"
                 >
-                  <div className="flex items-start gap-4 flex-1">
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 border ${
-                      s.statut === "ENQUETE_DGDDL" 
-                        ? "bg-orange-500/10 border-orange-200 text-orange-500" 
-                        : "bg-rose-500/10 border-rose-200 text-rose-500"
-                    }`}>
-                      <AlertCircle className="w-6 h-6" />
+                  {needsAttention && (
+                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-orange-400 to-orange-600" />
+                  )}
+                  <div className="flex items-start gap-5 p-6 pl-8">
+                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 border ${meta.bg} ${meta.border}`}>
+                      <StatusIcon className={`w-6 h-6 ${meta.text}`} />
                     </div>
-                    <div className="space-y-1 flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="font-black text-foreground group-hover:text-primary transition-colors truncate">
+
+                    <div className="flex-1 min-w-0 space-y-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-black text-foreground group-hover:text-primary transition-colors text-base">
                           {s.sujet}
                         </p>
                         {s.is_prioritaire && (
-                          <span className="animate-pulse bg-red-500 w-2 h-2 rounded-full" title="Prioritaire" />
+                          <span className="inline-flex items-center gap-1 text-[9px] font-black px-2 py-0.5 rounded-full bg-red-500/10 text-red-600 border border-red-500/20 animate-pulse">
+                            <span className="w-1.5 h-1.5 rounded-full bg-red-500" /> PRIORITAIRE
+                          </span>
                         )}
                       </div>
-                      <p className="text-xs text-muted-foreground line-clamp-1 italic">{s.description}</p>
-                      
-                      <div className="flex items-center gap-3 flex-wrap mt-3">
-                        <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest flex items-center gap-1">
+                      <p className="text-xs text-muted-foreground line-clamp-1">{s.description}</p>
+
+                      <div className="flex items-center gap-2 flex-wrap mt-2">
+                        <span className={`inline-flex items-center gap-1.5 text-[9px] font-black px-2.5 py-1 rounded-full border ${meta.bg} ${meta.text} ${meta.border}`}>
+                          <StatusIcon className="w-3 h-3" />
+                          {meta.label}
+                        </span>
+
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-muted-foreground">
                           <MapPin className="w-3 h-3 text-primary" />
                           {s.commune_detail?.nom || s.commune}
                         </span>
-                        
-                        {/* Statut Badge */}
-                        <Badge variant="outline" className={`text-[9px] font-black border-2 ${
-                          s.statut === "ENQUETE_DGDDL" 
-                            ? "bg-orange-500/5 text-orange-600 border-orange-500/20" 
-                            : s.statut === "VALIDE_FRAUDE"
-                            ? "bg-red-500/5 text-red-600 border-red-500/20"
-                            : "bg-muted/10 text-muted-foreground border-border"
-                        }`}>
-                          {s.statut === "ENQUETE_DGDDL" ? "🔍 ENQUÊTE EN COURS" : s.statut}
-                        </Badge>
 
                         {s.nb_preuves > 0 && (
-                          <Badge variant="outline" className="text-[9px] font-black bg-primary/5 text-primary border-primary/20">
+                          <span className="inline-flex items-center gap-1 text-[9px] font-black px-2 py-0.5 rounded-full bg-primary/5 text-primary border border-primary/20">
                             {s.nb_preuves} preuve{s.nb_preuves > 1 ? "s" : ""}
-                          </Badge>
+                          </span>
                         )}
 
-                        <span className="text-[9px] font-bold text-muted-foreground italic ml-auto">
+                        {s.nb_votes > 0 && (
+                          <span className="inline-flex items-center gap-1 text-[9px] font-bold text-muted-foreground">
+                            {s.nb_votes} vote{s.nb_votes > 1 ? "s" : ""} ({s.pct_credible}% credible)
+                          </span>
+                        )}
+
+                        <span className="text-[9px] font-bold text-muted-foreground/70 ml-auto">
                           {formatDateShort(s.created_at)}
                         </span>
                       </div>
                     </div>
-                  </div>
 
-                  <div className="flex items-center gap-2 shrink-0 ml-4">
-                    <Button variant="ghost" className="h-10 px-4 rounded-xl text-[10px] font-black uppercase tracking-widest group-hover:bg-primary group-hover:text-white transition-all">
-                      Audit
-                      <ExternalLink className="w-3.5 h-3.5 ml-2" />
-                    </Button>
+                    <div className="flex items-center shrink-0 self-center">
+                      <Button
+                        variant="ghost"
+                        className={`h-11 px-5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                          needsAttention
+                            ? "bg-gradient-to-br from-orange-500 to-orange-600 text-white shadow-lg shadow-orange-500/30 group-hover:scale-[1.03]"
+                            : "group-hover:bg-primary group-hover:text-white"
+                        }`}
+                      >
+                        {needsAttention ? "Auditer" : "Voir"}
+                        <ExternalLink className="w-3.5 h-3.5 ml-2" />
+                      </Button>
+                    </div>
                   </div>
                 </Link>
-
-                {/* Actions de vote rapides (si non révisé) */}
-                {!s.is_reviewed && (
-                  <div className="absolute right-24 top-1/2 -translate-y-1/2 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button
-                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleVote(s.id, "CREDIBLE"); }}
-                      disabled={votingId === s.id}
-                      className="bg-emerald-600/90 hover:bg-emerald-600 text-white h-9 w-9 p-0 rounded-xl shadow-lg shadow-emerald-500/20"
-                    >
-                      {votingId === s.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <ThumbsUp className="w-4 h-4" />}
-                    </Button>
-                    <Button
-                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleVote(s.id, "INFONDE"); }}
-                      disabled={votingId === s.id}
-                      className="bg-rose-600/90 hover:bg-rose-600 text-white h-9 w-9 p-0 rounded-xl shadow-lg shadow-rose-500/20"
-                    >
-                      {votingId === s.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <ThumbsDown className="w-4 h-4" />}
-                    </Button>
-                  </div>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         </CardContent>
       </Card>

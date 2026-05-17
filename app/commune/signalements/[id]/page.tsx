@@ -134,18 +134,154 @@ export default function SignalementDetailPage() {
               </p>
             </div>
             
-            {signalement.statut === "ACTIF" && (
-              <Badge className="bg-amber-500/10 text-amber-700 border-amber-500/20 text-[10px] font-black uppercase py-2 px-4 rounded-full">
-                🔍 En attente d'examen par le DGDDL
+            {signalement.statut === "NOUVEAU" && (
+              <Badge className="bg-blue-500/10 text-blue-700 border-blue-500/20 text-[10px] font-black uppercase py-2 px-4 rounded-full">
+                🆕 Nouveau — En attente d'examen DGDDL
               </Badge>
             )}
-            
+
+            {signalement.statut === "VIRAL" && (
+              <Badge className="bg-amber-500/10 text-amber-700 border-amber-500/20 text-[10px] font-black uppercase py-2 px-4 rounded-full animate-pulse">
+                🔥 Viral — Intervention DGDDL recommandée
+              </Badge>
+            )}
+
             {signalement.statut === "ENQUETE_DGDDL" && (
               <Badge className="bg-orange-500/10 text-orange-700 border-orange-500/20 text-[10px] font-black uppercase py-2 px-4 rounded-full animate-pulse">
                 ⚖️ Enquête DGDDL en cours
               </Badge>
             )}
+
+            {signalement.statut === "VALIDE_FRAUDE" && (
+              <Badge className="bg-red-500/10 text-red-700 border-red-500/20 text-[10px] font-black uppercase py-2 px-4 rounded-full">
+                🔴 Fraude confirmée par DGDDL
+              </Badge>
+            )}
+
+            {signalement.statut === "REJETE_FAUX" && (
+              <Badge className="bg-zinc-500/10 text-zinc-700 border-zinc-500/20 text-[10px] font-black uppercase py-2 px-4 rounded-full">
+                ⚪ Signalement faux
+              </Badge>
+            )}
+
+            {signalement.statut === "CLOS" && (
+              <Badge className="bg-emerald-500/10 text-emerald-700 border-emerald-500/20 text-[10px] font-black uppercase py-2 px-4 rounded-full">
+                ⚫ Clos
+              </Badge>
+            )}
           </div>
+
+          {/* IMPACT POUR VOTRE COMMUNE (visible uniquement si verdict rendu) */}
+          {signalement.resolution && (
+            <div className={`p-6 rounded-[32px] border-2 ${
+              signalement.resolution === "FRAUDE"
+                ? "bg-red-500/5 border-red-500/30"
+                : signalement.resolution === "FAUX"
+                ? "bg-emerald-500/5 border-emerald-500/30"
+                : "bg-zinc-500/5 border-zinc-500/30"
+            }`}>
+              <p className="text-[10px] font-black uppercase tracking-widest mb-4 text-muted-foreground">Impact sur votre commune</p>
+
+              {signalement.resolution === "FRAUDE" && (
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-red-500/20 flex items-center justify-center shrink-0">
+                      <span className="text-base font-black text-red-600">−20</span>
+                    </div>
+                    <div>
+                      <p className="text-sm font-black text-red-700 dark:text-red-300">Pénalité de réputation</p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">
+                        Votre score de réputation personnel a été abaissé de 20 points suite à la confirmation de la fraude.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-red-500/20 flex items-center justify-center shrink-0">
+                      <span className="text-lg">📉</span>
+                    </div>
+                    <div>
+                      <p className="text-sm font-black text-red-700 dark:text-red-300">Score de transparence impacté</p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">
+                        Le score d'intégrité de votre commune est recalculé automatiquement et baisse pour intégrer cette fraude confirmée.
+                      </p>
+                    </div>
+                  </div>
+                  {signalement.resolution_justification && (
+                    <div className="mt-3 p-3 bg-card/60 rounded-xl border border-red-500/20">
+                      <p className="text-[10px] font-black text-red-600 uppercase tracking-widest mb-1">Justification DGDDL</p>
+                      <p className="text-xs text-foreground/90 leading-relaxed">{signalement.resolution_justification}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {signalement.resolution === "FAUX" && (
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center shrink-0">
+                      <span className="text-base font-black text-emerald-600">+15</span>
+                    </div>
+                    <div>
+                      <p className="text-sm font-black text-emerald-700 dark:text-emerald-300">Bonus de réputation</p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">
+                        Le signalement a été jugé abusif. Vous êtes lavé de tout soupçon, +15 points de réputation.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center shrink-0">
+                      <span className="text-lg">✓</span>
+                    </div>
+                    <div>
+                      <p className="text-sm font-black text-emerald-700 dark:text-emerald-300">Score d'intégrité bonifié</p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">
+                        Un signalement rejeté apporte un bonus modeste au score de transparence de votre commune.
+                      </p>
+                    </div>
+                  </div>
+                  {signalement.resolution_justification && (
+                    <div className="mt-3 p-3 bg-card/60 rounded-xl border border-emerald-500/20">
+                      <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1">Justification DGDDL</p>
+                      <p className="text-xs text-foreground/90 leading-relaxed">{signalement.resolution_justification}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {signalement.resolution === "INFONDE" && (
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-zinc-500/20 flex items-center justify-center shrink-0">
+                      <span className="text-base font-black text-zinc-600">±0</span>
+                    </div>
+                    <div>
+                      <p className="text-sm font-black text-zinc-700 dark:text-zinc-300">Aucune sanction</p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">
+                        Le signalement est classé sans suite. Aucun impact sur votre score de réputation ni celui de votre commune.
+                      </p>
+                    </div>
+                  </div>
+                  {signalement.resolution_justification && (
+                    <div className="mt-3 p-3 bg-card/60 rounded-xl border border-zinc-500/20">
+                      <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest mb-1">Justification DGDDL</p>
+                      <p className="text-xs text-foreground/90 leading-relaxed">{signalement.resolution_justification}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {signalement.blockchain_tx_hash_resolution && (
+                <a
+                  href={`https://amoy.polygonscan.com/tx/${signalement.blockchain_tx_hash_resolution}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 mt-4 text-[10px] font-black text-primary hover:underline"
+                >
+                  Verifier le verdict sur la blockchain
+                </a>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

@@ -431,6 +431,13 @@ class SignalementListCreateView(generics.ListCreateAPIView):
             else:
                 return qs.none()
 
+        # Mes votes : signalements sur lesquels j'ai vote
+        if self.request.query_params.get("mes_votes") == "true":
+            if self.request.user.is_authenticated:
+                qs = qs.filter(votes__citoyen=self.request.user).distinct()
+            else:
+                return qs.none()
+
         return qs.order_by("-is_prioritaire", "-created_at")
 
     def get_permissions(self):
@@ -856,8 +863,11 @@ def lancer_enquete_signalement(request, pk):
     except Signalement.DoesNotExist:
         return Response({"error": "Signalement introuvable"}, status=404)
 
-    if signalement.statut not in ["ACTIF", "ENQUETE_DGDDL"]:
-        return Response({"error": "Cet signalement n'est pas éligible pour enquête"}, status=400)
+    if signalement.statut not in ["NOUVEAU", "VIRAL", "ENQUETE_DGDDL"]:
+        return Response({
+            "error": f"Ce signalement (statut: {signalement.statut}) n'est plus éligible pour enquête. "
+                     "Seuls les signalements NOUVEAU, VIRAL ou en cours d'enquête peuvent être audités."
+        }, status=400)
 
     # Lancer l'enquête
     signalement.statut = "ENQUETE_DGDDL"
@@ -978,18 +988,40 @@ def resoudre_enquete_signalement(request, pk):
             print(f"Erreur blockchain résolution enquête: {str(e)}")
     # ──────────────────────────────────────────────────────────────────
 
-    # Appliquer la résolution
+    # ════════════════════════════════════════════════════════════════════
+    # APPLIQUER LA RESOLUTION (3 cas : FRAUDE / FAUX / INFONDE)
+    # Chaque cas declenche des incidences sur :
+    # - Le signalement (statut)
+    # - La transaction liee (statut)
+    # - L'auteur (reputation +/-)
+    # - Le maire de la commune (reputation +/-)
+    # - Les votants (reputation +/- selon exactitude)
+    # - Notifications a tous les acteurs
+    # ════════════════════════════════════════════════════════════════════
+
+    # Determiner quel verdict citoyen est "correct" pour ce resultat DGDDL
+    #   FRAUDE   -> les votants "CREDIBLE" avaient raison
+    #   FAUX     -> les votants "INFONDE"  avaient raison
+    #   INFONDE  -> personne n'a vraiment "raison" (signalement de bonne foi mais sans fondement)
+    if resolution == "FRAUDE":
+        vote_juste = "CREDIBLE"
+    elif resolution == "FAUX":
+        vote_juste = "INFONDE"
+    else:
+        vote_juste = None  # personne ne gagne, mais personne ne perd non plus
+
+    # ─── 1) STATUT SIGNALEMENT + TRANSACTION ────────────────────────────
     if resolution == "FRAUDE":
         signalement.statut = "VALIDE_FRAUDE"
-        
-        # 🚨 Invalider la transaction liée si elle existe
+
+        # Invalider la transaction liee si elle existe
         if signalement.transaction:
             from .models import Transaction
             tx = signalement.transaction
             tx.statut = "FRAUDULEUSE"
             tx.save()
-            
-            # Créer une transaction de correction si montant fourni
+
+            # Creer une transaction de correction si montant fourni
             montant_raw = request.data.get("montant_corrige")
             if montant_raw is not None:
                 try:
@@ -1000,7 +1032,7 @@ def resoudre_enquete_signalement(request, pk):
                         statut="CORRIGEE",
                         montant_fcfa=montant_corrige,
                         categorie=tx.categorie,
-                        description=f"✅ CORRECTION AUDIT - Signalement #{str(signalement.id)[:8]}",
+                        description=f"CORRECTION AUDIT - Signalement #{str(signalement.id)[:8]}",
                         parent_frauduleux=tx,
                         is_correction=True,
                         correction_justification=justification,
@@ -1008,79 +1040,130 @@ def resoudre_enquete_signalement(request, pk):
                         valide_par=request.user,
                         validated_at=timezone.now(),
                         periode=tx.periode,
-                        projet=tx.projet
+                        projet=tx.projet,
                     )
                 except (ValueError, TypeError):
                     pass
 
-        # +50 pts pour signataire
-        if signalement.auteur:
-            signalement.auteur.reputation_score = (signalement.auteur.reputation_score or 0) + 50
-            signalement.auteur.save(update_fields=["reputation_score"])
-            notify_user(
-                signalement.auteur,
-                "🎉 Fraude Confirmée !",
-                f"+50 points ! Votre signalement a révélé une fraude.",
-                "SIGNALEMENT"
-            )
-
     elif resolution == "FAUX":
         signalement.statut = "REJETE_FAUX"
-        # -10 pts pour signataire
-        if signalement.auteur:
-            signalement.auteur.reputation_score = max(0, (signalement.auteur.reputation_score or 0) - 10)
-            signalement.auteur.save(update_fields=["reputation_score"])
-            notify_user(
-                signalement.auteur,
-                "⚠️ Signalement Rejeté",
-                f"-10 points. Le signalement a été jugé infondé.",
-                "SIGNALEMENT"
-            )
+        # La transaction etait suspectee a tort -> si elle etait "SOUMIS" (en attente
+        # de validation), on la valide automatiquement. On n'ecrase aucun statut final
+        # (VALIDE, REJETE, FRAUDULEUSE, CORRIGEE) car ils ont leur propre cycle.
+        if signalement.transaction and signalement.transaction.statut == "SOUMIS":
+            signalement.transaction.statut = "VALIDE"
+            signalement.transaction.save()
 
     elif resolution == "INFONDE":
         signalement.statut = "CLOS"
+        # Pareil pour INFONDE : on debloque la transaction si elle etait encore en attente
+        if signalement.transaction and signalement.transaction.statut == "SOUMIS":
+            signalement.transaction.statut = "VALIDE"
+            signalement.transaction.save()
 
+    # Persister la resolution sur le signalement
     signalement.resolution = resolution
     signalement.resolution_justification = justification
     signalement.resolution_par = request.user
     signalement.resolution_a = timezone.now()
     signalement.save()
 
-    # Log final dans le Timeline d'Audit
+    # Log final dans le Timeline d'Audit (visible publiquement)
     ActionDGDDL.objects.create(
         signalement=signalement,
         action_type="RESOLUTION",
-        description=f"Verdict : {resolution}. {justification}",
-        effectuee_par=request.user
+        description=f"Verdict : {resolution}. {justification}".strip(". "),
+        effectuee_par=request.user,
     )
 
-    # Sanction Maire si fraude avérée dans sa commune
-    if resolution == "FRAUDE":
-        maire = User.objects.filter(commune=signalement.commune, role="MAIRE").first()
-        if maire:
-            maire.reputation_score = max(0, (maire.reputation_score or 0) - 20)
+    # ─── 2) REPUTATION + NOTIFICATION : AUTEUR DU SIGNALEMENT ───────────
+    if signalement.auteur:
+        auteur = signalement.auteur
+        if resolution == "FRAUDE":
+            delta = 50
+            titre = "Fraude confirmee !"
+            message = f"+{delta} points. Votre signalement a revele une fraude reelle. Merci pour votre vigilance citoyenne."
+        elif resolution == "FAUX":
+            delta = -10
+            titre = "Signalement juge faux"
+            message = f"{delta} points. Le DGDDL a juge votre signalement abusif. Veillez a fonder vos accusations."
+        else:  # INFONDE
+            delta = 0
+            titre = "Signalement classe sans suite"
+            message = "Le DGDDL a juge votre signalement infonde. Aucune sanction. Merci pour votre participation citoyenne."
+
+        if delta != 0:
+            auteur.reputation_score = max(0, (auteur.reputation_score or 0) + delta)
+            auteur.save(update_fields=["reputation_score"])
+
+        notify_user(auteur, titre, message, "SIGNALEMENT")
+
+    # ─── 3) REPUTATION + NOTIFICATION : MAIRE DE LA COMMUNE ─────────────
+    maire = User.objects.filter(commune=signalement.commune, role="MAIRE").first()
+    if maire:
+        if resolution == "FRAUDE":
+            delta = -20
+            titre = "Fraude confirmee dans votre commune"
+            message = f"{delta} points. L'enquete DGDDL a confirme une fraude dans votre commune."
+            notify_user(maire, titre, message, "SIGNALEMENT")
+        elif resolution == "FAUX":
+            delta = 15
+            titre = "Vous etes lave de tout soupcon"
+            message = f"+{delta} points. Le DGDDL a juge le signalement abusif. Votre integrite est confirmee."
+            notify_user(maire, titre, message, "SIGNALEMENT")
+        else:  # INFONDE
+            delta = 0
+            titre = "Signalement contre votre commune classe"
+            message = "Le DGDDL a juge le signalement infonde. Aucune sanction prevue."
+            notify_user(maire, titre, message, "SIGNALEMENT")
+
+        if delta != 0:
+            maire.reputation_score = max(0, (maire.reputation_score or 0) + delta)
             maire.save(update_fields=["reputation_score"])
+
+    # ─── 4) REPUTATION + NOTIFICATION : VOTANTS CITOYENS ────────────────
+    # Recompense ceux qui ont vote juste, penalise ceux qui ont vote a tort.
+    # Pour INFONDE : pas d'ajustement (personne n'avait "raison" sur un classement)
+    for vote in signalement.votes.select_related("citoyen").all():
+        if not vote.citoyen:
+            continue
+        votant = vote.citoyen
+
+        if vote_juste is None:
+            # Cas INFONDE : notification neutre, pas d'ajustement
             notify_user(
-                maire,
-                "⚖️ Fraude Confirmée dans votre Commune",
-                f"L'enquête DGDDL a confirmé une fraude. Votre score de réputation a été impacté.",
-                "SIGNALEMENT"
+                votant,
+                "Verdict rendu : Classement sans suite",
+                f"Le signalement '{signalement.sujet}' que vous avez vote est classe sans suite (verdict INFONDE).",
+                "SIGNALEMENT",
+            )
+            continue
+
+        if vote.verdict == vote_juste:
+            # Vote juste -> +5 pts
+            delta = 5
+            titre = "Votre vote etait juste !"
+            message = (
+                f"+{delta} points. Vous aviez vote '{vote.verdict}' et le DGDDL a rendu le verdict '{resolution}'. "
+                f"Votre jugement citoyen etait correct."
+            )
+        else:
+            # Vote errone -> -3 pts (penalite modeste)
+            delta = -3
+            titre = "Votre vote etait errone"
+            message = (
+                f"{delta} points. Vous aviez vote '{vote.verdict}' mais le DGDDL a rendu le verdict '{resolution}'. "
+                f"Continuez a evaluer les signalements avec rigueur."
             )
 
-    # Notifier tous les votants
-    for vote in signalement.votes.all():
-        if vote.citoyen:
-            notify_user(
-                vote.citoyen,
-                f"⚖️ Verdict Rendu: {resolution}",
-                f"L'enquête sur le signalement auquel vous avez participé est terminée.",
-                "SIGNALEMENT"
-            )
+        votant.reputation_score = max(0, (votant.reputation_score or 0) + delta)
+        votant.save(update_fields=["reputation_score"])
+        notify_user(votant, titre, message, "SIGNALEMENT")
 
     from .serializers import SignalementSerializer
     return Response({
-        "message": f"Enquête résolue avec succès: {resolution}",
-        "signalement": SignalementSerializer(signalement).data
+        "message": f"Enquete resolue avec succes: {resolution}",
+        "signalement": SignalementSerializer(signalement).data,
     })
 
 

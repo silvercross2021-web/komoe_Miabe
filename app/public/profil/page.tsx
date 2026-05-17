@@ -12,6 +12,7 @@ import { CheckCircle2, Calendar } from "lucide-react";
 import { ipfsService } from "@/lib/ipfs";
 import { useRef } from "react";
 import { formatDateShort } from "@/lib/constants";
+import { EngagementHistory } from "@/components/profile/EngagementHistory";
 
 export default function ProfilPublic() {
   const { user, refreshUser } = useAuth();
@@ -214,6 +215,9 @@ export default function ProfilPublic() {
           </div>
         </CardContent>
       </Card>
+
+      {/* ENGAGEMENT CITOYEN & HISTORIQUE REPUTATION */}
+      <EngagementHistory userId={user.id} />
 
       {/* EDIT DRAWER */}
       <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
