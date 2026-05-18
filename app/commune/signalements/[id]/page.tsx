@@ -74,8 +74,8 @@ export default function SignalementDetailPage() {
           </div>
         </div>
         <div className="flex flex-col items-center p-6 bg-primary/5 rounded-[32px] border border-primary/10 shadow-xl shadow-primary/5 min-w-[120px]">
-          <span className="text-4xl font-black text-primary">1</span>
-          <span className="text-[10px] font-black text-primary/60 uppercase tracking-widest mt-1">Alerte</span>
+          <span className="text-4xl font-black text-primary">{signalement.nb_votes ?? 0}</span>
+          <span className="text-[10px] font-black text-primary/60 uppercase tracking-widest mt-1">Votes citoyens</span>
         </div>
       </div>
 
@@ -106,21 +106,37 @@ export default function SignalementDetailPage() {
               <h3 className="text-xl font-black text-foreground mb-8 uppercase tracking-tight italic flex items-center gap-3">
                 <Camera className="text-primary" size={20} /> Pièces Jointes
               </h3>
-              <div className="grid grid-cols-1 gap-4">
-                <div className="aspect-video bg-muted/50 rounded-[32px] flex flex-col items-center justify-center border-2 border-dashed border-border group hover:border-primary/50 transition-all cursor-pointer overflow-hidden relative">
-                   <Camera className="text-muted-foreground group-hover:scale-110 transition-transform" size={48} />
-                   <div className="mt-4 text-[10px] font-black text-muted-foreground uppercase tracking-widest">Image_Preuve_01.jpg</div>
-                   
-                   <div className="absolute inset-0 bg-primary/90 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-all p-6 text-center">
-                      <p className="text-white text-xs font-black uppercase tracking-widest mb-4">Certifié sur IPFS</p>
-                      <Button className="w-full bg-white text-primary hover:bg-white/90 rounded-xl font-black uppercase text-[10px] h-10 shadow-2xl">
-                         <Download size={14} className="mr-2" /> Télécharger preuve
-                      </Button>
-                   </div>
+              {signalement.preuves && signalement.preuves.length > 0 ? (
+                <div className="grid grid-cols-1 gap-4">
+                  {signalement.preuves.map((preuve) => (
+                    <a
+                      key={preuve.id}
+                      href={preuve.ipfs_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-3 p-4 bg-muted/50 rounded-2xl border border-border hover:border-primary/50 transition-all group"
+                    >
+                      {preuve.type_fichier === "image" ? (
+                        <Camera className="w-5 h-5 text-primary shrink-0" />
+                      ) : (
+                        <Download className="w-5 h-5 text-primary shrink-0" />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-black text-foreground truncate">{preuve.nom_fichier}</p>
+                        <p className="text-[9px] font-mono text-muted-foreground truncate">{preuve.ipfs_hash}</p>
+                      </div>
+                      <Download size={14} className="text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
+                    </a>
+                  ))}
                 </div>
-              </div>
-              <p className="mt-6 text-[10px] text-muted-foreground font-bold italic leading-relaxed text-center">
-                Les photos jointes sont stockées de manière décentralisée sur IPFS pour garantir qu'elles ne soient pas modifiées après le signalement.
+              ) : (
+                <div className="flex flex-col items-center justify-center py-8 text-center">
+                  <Camera className="w-10 h-10 text-muted-foreground/20 mb-3" />
+                  <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Aucune preuve jointe</p>
+                </div>
+              )}
+              <p className="mt-4 text-[10px] text-muted-foreground font-bold italic leading-relaxed text-center">
+                Les pièces jointes sont certifiées sur IPFS et ne peuvent pas être modifiées après le signalement.
               </p>
             </CardContent>
           </Card>

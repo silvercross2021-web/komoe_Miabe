@@ -40,7 +40,7 @@ function getProgressionStep(statut: string): { step: 1 | 2 | 3; label: string } 
 export default function ControleSignalementDetailPage() {
   const params = useParams();
   const id = params.id as string;
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [signalement, setSignalement] = useState<Signalement | null>(null);
   const [loading, setLoading] = useState(true);
   const [votingId, setVotingId] = useState<string | null>(null);
@@ -115,6 +115,7 @@ export default function ControleSignalementDetailPage() {
       setJustification("");
       setMontantCorrige("");
       await fetchSignalement();
+      refreshUser();
       pushToast({
         title: "Verdict publié",
         description: `Le verdict ${resolution} a été scellé sur la blockchain et notifié à tous les acteurs.`,

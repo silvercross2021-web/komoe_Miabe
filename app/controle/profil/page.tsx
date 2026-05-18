@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import { Mail, Phone, Shield, Edit3, Camera, Loader2 } from "lucide-react";
+import { Mail, Phone, Shield, Edit3, Camera, Loader2, Star } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/Button";
 import { useState } from "react";
@@ -200,6 +200,15 @@ export default function ProfilControle() {
               <Badge variant={user.is_blockchain_authorized ? "success" : "secondary"} className="font-bold">
                 {user.is_blockchain_authorized ? "ACTIVE" : "INACTIVE"}
               </Badge>
+            </div>
+
+            <div className="flex items-center justify-between p-4 bg-primary/5 rounded-[16px] border border-primary/20 md:col-span-3">
+              <div className="flex items-center gap-2">
+                <Star size={14} className="text-primary fill-primary" />
+                <span className="text-sm font-bold text-foreground">Score de réputation</span>
+                <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest italic ml-2">+15 pts par enquête résolue</span>
+              </div>
+              <span className="text-2xl font-black text-primary tabular-nums">{user.reputation_score ?? 0} pts</span>
             </div>
           </div>
         </CardContent>

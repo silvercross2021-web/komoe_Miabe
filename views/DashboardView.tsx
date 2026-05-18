@@ -274,6 +274,7 @@ const MaireDashboard = ({ communeId }: { communeId: number }) => {
   const [rejectMotif, setRejectMotif] = useState("");
   const [rejectLoading, setRejectLoading] = useState(false);
   const { transactions: all, loading, error, refetch } = useCommuneTransactions(communeId);
+  const { refreshUser } = useAuth();
   const enAttente = all.filter(t => t.statut === 'SOUMIS');
   const valides = all.filter(t => t.statut === 'VALIDE');
   const { communes } = useCommunesList();
@@ -339,6 +340,7 @@ const MaireDashboard = ({ communeId }: { communeId: number }) => {
       }
 
       refetch();
+      refreshUser();
     } catch (err: any) {
       console.error("❌ Erreur de validation:", err);
       alert("Échec de la signature : " + (err.shortMessage || err.message || "Erreur de transaction"));
@@ -361,6 +363,7 @@ const MaireDashboard = ({ communeId }: { communeId: number }) => {
       setRejectingId(null);
       setRejectMotif("");
       refetch();
+      refreshUser();
     } catch (err: any) {
       console.error("❌ Erreur de rejet:", err);
       alert("Échec du rejet : " + (err.message || "Erreur inconnue"));

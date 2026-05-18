@@ -270,6 +270,13 @@ def valider_transaction(request, pk):
     transaction.valide_par = request.user
     transaction.validated_at = timezone.now()
 
+    # +10 points de réputation pour le Maire qui valide une transaction
+    try:
+        request.user.reputation_score = (request.user.reputation_score or 0) + 10
+        request.user.save(update_fields=["reputation_score"])
+    except Exception:
+        pass
+
     # Save with explicit update_fields to avoid crashing if blockchain_synced_at
     # column is missing on Render (migration 0014 may not have been applied yet).
     save_fields = ["statut", "valide_par", "validated_at", "updated_at"]
@@ -361,6 +368,13 @@ def rejeter_transaction(request, pk):
     transaction.validated_at = timezone.now()
     transaction.motif_rejet = motif
     transaction.save()
+
+    # +2 points de réputation pour le Maire qui rejette avec un motif valide
+    try:
+        request.user.reputation_score = (request.user.reputation_score or 0) + 2
+        request.user.save(update_fields=["reputation_score"])
+    except Exception:
+        pass
 
     # H10 : Notifier l'agent
     from .notifications import notify_user
@@ -1111,6 +1125,13 @@ def resoudre_enquete_signalement(request, pk):
     signalement.resolution_par = request.user
     signalement.resolution_a = timezone.now()
     signalement.save()
+
+    # +15 points de réputation pour le DGDDL qui clôt une enquête
+    try:
+        request.user.reputation_score = (request.user.reputation_score or 0) + 15
+        request.user.save(update_fields=["reputation_score"])
+    except Exception:
+        pass
 
     # Log final dans le Timeline d'Audit (visible publiquement)
     ActionDGDDL.objects.create(

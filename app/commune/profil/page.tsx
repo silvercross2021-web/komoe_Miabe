@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import { MapPin, Users, Building, Activity, Mail, Phone, Wallet, Shield, Edit3, Camera, Receipt, Clock } from "lucide-react";
+import { MapPin, Users, Building, Activity, Mail, Phone, Wallet, Shield, Edit3, Camera, Receipt, Clock, Star } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useCommuneDetail } from "@/lib/hooks/useCommunes";
 import { Button } from "@/components/ui/Button";
@@ -164,12 +164,22 @@ export default function ProfilCommune() {
               </div>
               <div className="bg-muted/50 p-4 rounded-2xl text-center border border-border/50">
                 <p className="text-2xl font-black text-foreground tabular-nums">
-                  {mesSaisies.length > 0 
-                    ? Math.round((mesSaisies.filter(t => t.statut === 'VALIDE').length / mesSaisies.length) * 100) 
+                  {mesSaisies.length > 0
+                    ? Math.round((mesSaisies.filter(t => t.statut === 'VALIDE').length / mesSaisies.length) * 100)
                     : 100}%
                 </p>
                 <p className="text-[10px] font-black text-muted-foreground uppercase tracking-wider italic">Fiabilité</p>
               </div>
+            </div>
+
+            {/* Score de réputation */}
+            <div className="mt-4 bg-primary/5 border border-primary/20 p-5 rounded-2xl text-center">
+              <div className="flex items-center justify-center gap-2 mb-1">
+                <Star size={16} className="text-primary fill-primary" />
+                <p className="text-3xl font-black text-primary tabular-nums">{user.reputation_score ?? 0}</p>
+              </div>
+              <p className="text-[10px] font-black text-primary/70 uppercase tracking-widest italic">Points de réputation</p>
+              <p className="text-[9px] text-muted-foreground mt-1 font-medium italic">+10 pts par validation · +2 pts par rejet</p>
             </div>
           </CardContent>
         </Card>

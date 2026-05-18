@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Receipt, FileText, Building2,
   ShieldCheck, PieChart, AlertTriangle, Users, Shield,
   Network, Globe, BarChart3, Download, MapPin,
-  X, ChevronLeft, ChevronRight, LogOut, Banknote, CheckCircle
+  X, ChevronLeft, ChevronRight, LogOut, Banknote, CheckCircle, UserCircle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -56,6 +56,7 @@ const NAV_COMMUNE: NavItem[] = [
   { name: 'Signalements',            href: '/commune/signalements', icon: AlertTriangle,  onlyFor: ['MAIRE'] },
   { name: 'Budget & Audit',          href: '/commune/budget',       icon: PieChart },
   { name: 'Réseau Polygon',          href: '/commune/blockchain',   icon: Network },
+  { name: 'Mon profil',              href: '/commune/profil',       icon: UserCircle },
 ];
 
 const NAV_PUBLIC: NavItem[] = [
