@@ -272,21 +272,19 @@ def valider_transaction(request, pk):
     transaction.validated_at = timezone.now()
     transaction.save()
 
-    # ─── MISE À JOUR BUDGET PROJET (Algorithme de Consommation) ───────
-    if transaction.projet and transaction.type == "DEPENSE":
-        from django.db.models import Sum
-        from .models import TransactionStatut, TransactionType
-        
-        # Recalcul précis de toutes les dépenses validées pour ce projet
-        total_projet = Transaction.objects.filter(
-            projet=transaction.projet,
-            statut__in=[TransactionStatut.VALIDE, TransactionStatut.CORRIGEE],
-            type=TransactionType.DEPENSE
-        ).aggregate(total=Sum('montant_fcfa'))['total'] or 0
-        
-        transaction.projet.budget_consomme_fcfa = total_projet
-        transaction.projet.save(update_fields=["budget_consomme_fcfa"])
-    # ──────────────────────────────────────────────────────────────────
+    try:
+        if transaction.projet and transaction.type == "DEPENSE":
+            from django.db.models import Sum
+            from .models import TransactionStatut, TransactionType
+            total_projet = Transaction.objects.filter(
+                projet=transaction.projet,
+                statut__in=[TransactionStatut.VALIDE, TransactionStatut.CORRIGEE],
+                type=TransactionType.DEPENSE
+            ).aggregate(total=Sum('montant_fcfa'))['total'] or 0
+            transaction.projet.budget_consomme_fcfa = total_projet
+            transaction.projet.save(update_fields=["budget_consomme_fcfa"])
+    except Exception:
+        pass
 
     try:
         from .notifications import notify_user
