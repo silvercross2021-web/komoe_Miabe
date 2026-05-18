@@ -28,7 +28,7 @@ import { type Commune, type Transaction, rapportsApi, projetsApi } from '@/lib/a
 import { AnomaliesWidget } from '@/components/dashboard/AnomaliesWidget';
 import { ProjetCard } from '@/components/projets/ProjetCard';
 import { ipfsService } from "@/lib/ipfs";
-import { useWriteContract, useAccount } from "wagmi";
+import { useWriteContract, useAccount, usePublicClient } from "wagmi";
 import { parseGwei } from "viem";
 import { BUDGET_LEDGER_ABI, BUDGET_LEDGER_ADDRESS } from "@/lib/blockchain";
 
@@ -284,8 +284,9 @@ const MaireDashboard = ({ communeId }: { communeId: number }) => {
   const budgetRestant = budgetAnnuel + totalRecettes - totalDepenses;
   const txRate = budgetAnnuel > 0 ? ((totalDepenses / budgetAnnuel) * 100).toFixed(1) : '0.0';
 
-  const { address, isConnected } = useAccount();
+  const { isConnected } = useAccount();
   const { writeContractAsync } = useWriteContract();
+  const publicClient = usePublicClient();
 
   const handleValider = async (tx: Transaction) => {
     if (!isConnected) {
@@ -311,9 +312,13 @@ const MaireDashboard = ({ communeId }: { communeId: number }) => {
           maxPriorityFeePerGas: parseGwei('25'),
           maxFeePerGas: parseGwei('30'),
         });
-        // 2. Mise à jour du Backend pour Recette
+        // Attendre la confirmation on-chain avant d'informer le backend
+        if (publicClient) {
+          const receipt = await publicClient.waitForTransactionReceipt({ hash: hash as `0x${string}` });
+          if (receipt.status === "reverted") throw new Error("La transaction a été rejetée par le contrat blockchain.");
+        }
         await transactionsApi.confirmerRecette(tx.id, hash);
-        alert("Félicitations Monsieur le Maire ! La recette est certifiée sur Polygon. 🚀");
+        alert("Félicitations Monsieur le Maire ! La recette est certifiée sur Polygon.");
       } else {
         hash = await writeContractAsync({
           address: BUDGET_LEDGER_ADDRESS as `0x${string}`,
@@ -324,9 +329,13 @@ const MaireDashboard = ({ communeId }: { communeId: number }) => {
           maxPriorityFeePerGas: parseGwei('25'),
           maxFeePerGas: parseGwei('30'),
         });
-        // 2. Mise à jour du Backend pour Dépense
+        // Attendre la confirmation on-chain avant d'informer le backend
+        if (publicClient) {
+          const receipt = await publicClient.waitForTransactionReceipt({ hash: hash as `0x${string}` });
+          if (receipt.status === "reverted") throw new Error("La transaction a été rejetée par le contrat blockchain.");
+        }
         await transactionsApi.valider(tx.id, hash);
-        alert("Félicitations Monsieur le Maire ! La dépense est gravée sur Polygon. 🔐");
+        alert("Félicitations Monsieur le Maire ! La dépense est gravée sur Polygon.");
       }
 
       refetch();
