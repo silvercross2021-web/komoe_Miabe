@@ -321,10 +321,15 @@ def valider_transaction(request, pk):
     except Exception:
         pass
 
+    try:
+        tx_data = TransactionSerializer(transaction).data
+    except Exception as serial_err:
+        tx_data = {"id": str(transaction.pk), "statut": transaction.statut}
+
     return Response(
         {
             "message": "Transaction validée et ancrée sur blockchain.",
-            "transaction": TransactionSerializer(transaction).data,
+            "transaction": tx_data,
         }
     )
 
