@@ -8,6 +8,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { signalementsApi, Signalement } from "@/lib/api";
 import { formatDateShort } from "@/lib/constants";
+import { useDataChange } from "@/lib/hooks/useDataChange";
 
 const STATUT_META: Record<string, { label: string; icon: any; bg: string; text: string; border: string; }> = {
   NOUVEAU:       { label: "Nouveau",           icon: AlertCircle, bg: "bg-blue-500/10",    text: "text-blue-600",    border: "border-blue-500/20" },
@@ -29,24 +30,16 @@ export default function SignalementsPage() {
     fetchSignalements();
   }, []);
 
+  // Auto-refresh quand un signalement est modifié ailleurs (verdict rendu, enquête lancée…)
+  // ou quand l'utilisateur revient sur l'onglet (focus de la fenêtre).
+  useDataChange("signalement", () => fetchSignalements());
+
   const fetchSignalements = async () => {
     setLoading(true);
     try {
-      // Vérifier cache (3 min)
-      const cached = localStorage.getItem('komoe_signalements_cache');
-      const cacheTime = localStorage.getItem('komoe_signalements_cache_time');
-      const now = Date.now();
-      if (cached && cacheTime && (now - parseInt(cacheTime)) < 180000) {
-        setSignalements(JSON.parse(cached));
-        setLoading(false);
-        return;
-      }
-
       const response = await signalementsApi.list();
       const result = response?.results || [];
       setSignalements(result);
-      localStorage.setItem('komoe_signalements_cache', JSON.stringify(result));
-      localStorage.setItem('komoe_signalements_cache_time', now.toString());
     } catch (err) {
       console.error("Erreur fetch signalements:", err);
       setSignalements([]);

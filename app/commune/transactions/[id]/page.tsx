@@ -13,6 +13,8 @@ import { transactionsApi } from "@/lib/api";
 import { useState } from "react";
 import { useReadContract, useWriteContract, useAccount } from "wagmi";
 import { BUDGET_LEDGER_ABI, BUDGET_LEDGER_ADDRESS } from "@/lib/blockchain";
+import { LinkedSignalementsPanel } from "@/components/transactions/LinkedSignalementsPanel";
+import { DgddlTransactionBadge } from "@/components/transactions/DgddlTransactionBadge";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, DrawerFooter, DrawerClose } from "@/components/ui/Drawer";
 
 const CopyButton = ({ text }: { text: string }) => {
@@ -258,6 +260,12 @@ export default function TransactionDetailPage() {
           )}
         </div>
       </div>
+
+      {/* Badge premium si TX corrective DGDDL */}
+      <DgddlTransactionBadge transaction={tx} />
+
+      {/* Signalements lies a cette transaction (toujours visible pour le Maire) */}
+      <LinkedSignalementsPanel transactionId={tx.id} />
 
       <div className="flex flex-col md:flex-row justify-between items-start gap-6 bg-card border border-border p-8 rounded-[40px] shadow-2xl shadow-primary/5">
         <div className="space-y-2">

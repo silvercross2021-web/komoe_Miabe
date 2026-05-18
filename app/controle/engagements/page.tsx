@@ -7,6 +7,7 @@ import { Heart, CheckCircle2, Clock, Users, Search, Download, Loader2, Filter, A
 import { Button } from "@/components/ui/Button";
 import { authApi, Engagement } from "@/lib/api";
 import { formatDateShort } from "@/lib/constants";
+import { useDataChange } from "@/lib/hooks/useDataChange";
 
 const ENGAGEMENT_TYPES: Record<string, { label: string; icon: any; color: string }> = {
   vote: { label: "Vote", icon: Heart, color: "text-blue-500" },
@@ -34,19 +35,12 @@ export default function EngagementsPage() {
     fetchEngagements();
   }, []);
 
+  // Auto-refresh quand certification/signalement/engagement changent ailleurs
+  useDataChange(["engagement", "certification", "signalement"], () => fetchEngagements());
+
   const fetchEngagements = async () => {
     setLoading(true);
     try {
-      // Vérifier le cache d'abord
-      const cached = localStorage.getItem('komoe_engagements_cache');
-      const cacheTime = localStorage.getItem('komoe_engagements_cache_time');
-      const now = Date.now();
-      if (cached && cacheTime && (now - parseInt(cacheTime)) < 300000) { // 5 min cache
-        setEngagements(JSON.parse(cached));
-        setLoading(false);
-        return;
-      }
-
       const response = await fetch('/api/engagements/', {
         headers: {
           'Authorization': `Bearer ${typeof window !== 'undefined' ? localStorage.getItem('komoe_access') || '' : ''}`,
@@ -57,11 +51,9 @@ export default function EngagementsPage() {
         const data = await response.json();
         const result = data.results || [];
         setEngagements(result);
-        localStorage.setItem('komoe_engagements_cache', JSON.stringify(result));
-        localStorage.setItem('komoe_engagements_cache_time', now.toString());
       } else if (response.status === 404) {
-        console.warn('Endpoint /api/engagements/ non disponible, utilisation fallback optimisé');
-        setError('Chargement en mode compatibilité (données en cache, 5 min)...');
+        console.warn('Endpoint /api/engagements/ non disponible, utilisation fallback');
+        setError('Chargement en mode compatibilité...');
 
         const usersResp = await authApi.list();
         const users = Array.isArray(usersResp) ? usersResp : usersResp?.results || [];
@@ -92,9 +84,7 @@ export default function EngagementsPage() {
         }
 
         setEngagements(allEngagements);
-        localStorage.setItem('komoe_engagements_cache', JSON.stringify(allEngagements));
-        localStorage.setItem('komoe_engagements_cache_time', now.toString());
-        setError('Données chargées et cachées (5 min)');
+        setError(null);
       }
     } catch (err) {
       const errorMsg = (err as any).message || 'Erreur inconnue';

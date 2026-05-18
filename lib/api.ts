@@ -284,8 +284,12 @@ export const authApi = {
     );
   },
 
-  listPendingCertifications: () =>
-    apiFetch<{ count: number; pending_certifications: UserProfile[] }>("/api/auth/certification/pending/"),
+  listPendingCertifications: (status?: string) => {
+    const params = status ? `?status=${status}` : "";
+    return apiFetch<{ count: number; pending_certifications: UserProfile[] }>(
+      `/api/auth/certification/pending/${params}`
+    );
+  },
 
   reviewCertification: (userId: string, action: "approve" | "reject") =>
     apiFetch<{ message: string; user_id: string; status: string; is_blockchain_authorized: boolean }>(
@@ -354,6 +358,10 @@ export interface Transaction {
   created_at: string; validated_at: string | null;
   updated_at: string;
   corrections?: Transaction[] | null;
+  // Champs lies a l'audit DGDDL (verdict FRAUDE)
+  is_correction?: boolean;
+  correction_justification?: string;
+  parent_frauduleux?: string | null;
 }
 
 export interface TransactionListFilters {
@@ -499,10 +507,12 @@ export interface Signalement {
   pct_credible: number;
   mon_vote: "CREDIBLE" | "INFONDE" | null;
   enquete_lancee_par?: string | null;
+  enquete_lancee_par_detail?: UserProfile | null;
   enquete_lancee_a?: string | null;
   resolution?: "FRAUDE" | "FAUX" | "INFONDE" | null;
   resolution_justification?: string | null;
   resolution_par?: string | null;
+  resolution_par_detail?: UserProfile | null;
   resolution_a?: string | null;
   blockchain_tx_hash_enquete?: string | null;
   blockchain_tx_hash_resolution?: string | null;
@@ -634,12 +644,13 @@ export const notificationsApi = {
 };
 
 export const signalementsApi = {
-  list: (params?: { commune?: number; mes_signalements?: boolean; mes_votes?: boolean; statut?: string }) => {
+  list: (params?: { commune?: number; mes_signalements?: boolean; mes_votes?: boolean; statut?: string; transaction?: string }) => {
     const search = new URLSearchParams();
     if (params?.commune) search.set("commune", params.commune.toString());
     if (params?.mes_signalements) search.set("mes_signalements", "true");
     if (params?.mes_votes) search.set("mes_votes", "true");
     if (params?.statut) search.set("statut", params.statut);
+    if (params?.transaction) search.set("transaction", params.transaction);
     return apiFetch<{ results: Signalement[]; count: number }>(`/api/transactions/signalements/?${search.toString()}`);
   },
   detail: (id: string) => apiFetch<Signalement>(`/api/transactions/signalements/${id}/`),
@@ -694,6 +705,8 @@ export const projetsApi = {
     return apiFetch<{ results: Projet[]; count: number }>(`/api/communes/projets/${qs ? `?${qs}` : ""}`);
   },
   getDetail: (id: string | number) => apiFetch<Projet>(`/api/communes/projets/${id}/`),
+  create: (data: Partial<Projet>) =>
+    apiFetch<Projet>("/api/communes/projets/", { method: "POST", body: JSON.stringify(data) }),
   update: (id: string | number, data: Partial<Projet>) =>
     apiFetch<Projet>(`/api/communes/projets/${id}/`, { method: "PATCH", body: JSON.stringify(data) }),
   delete: (id: string | number) => apiFetch<void>(`/api/communes/projets/${id}/`, { method: "DELETE" }),

@@ -329,13 +329,13 @@ export function MiaBot() {
     : "/animations/ANIMATION1.lottie";
 
   return (
-    <div className="fixed top-24 right-4 sm:right-6 z-[9999] flex flex-col items-end gap-4">
+    <div className="fixed bottom-6 right-4 sm:right-6 z-[9999] flex flex-col items-end gap-4">
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, y: -10, scale: 0.92 }}
+            initial={{ opacity: 0, y: 10, scale: 0.92 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -10, scale: 0.92 }}
+            exit={{ opacity: 0, y: 10, scale: 0.92 }}
             transition={{ type: "spring", stiffness: 280, damping: 24 }}
             className="relative w-[24rem] max-w-[calc(100vw-32px)] overflow-hidden rounded-[2rem] shadow-2xl shadow-emerald-500/10 dark:shadow-emerald-500/5"
           >

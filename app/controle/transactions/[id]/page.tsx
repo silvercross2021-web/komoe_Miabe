@@ -8,6 +8,8 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useTransactionDetail } from "@/lib/hooks/useTransactions";
 import { formatFCFA, formatDateShort, polygonscanTxUrl, ipfsFileUrl, stripHtml } from "@/lib/utils";
+import { LinkedSignalementsPanel } from "@/components/transactions/LinkedSignalementsPanel";
+import { DgddlTransactionBadge } from "@/components/transactions/DgddlTransactionBadge";
 
 export default function TransactionDetailPage() {
   const params = useParams();
@@ -45,6 +47,12 @@ export default function TransactionDetailPage() {
       <Link href="/controle/transactions" className="inline-flex items-center text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors mb-2">
         <ArrowLeft className="w-4 h-4 mr-2" /> Retour au registre national
       </Link>
+
+      {/* Badge premium si TX corrective DGDDL */}
+      <DgddlTransactionBadge transaction={tx} />
+
+      {/* Signalements lies (toujours visible pour DGDDL : indispensable a l'audit) */}
+      <LinkedSignalementsPanel transactionId={tx.id} />
 
       <div className="flex flex-col md:flex-row justify-between items-start gap-6 bg-card border border-border p-8 rounded-[32px] shadow-2xl shadow-primary/5">
         <div>

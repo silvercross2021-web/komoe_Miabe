@@ -438,6 +438,11 @@ class SignalementListCreateView(generics.ListCreateAPIView):
             else:
                 return qs.none()
 
+        # Filtre par transaction : tous les signalements lies a une transaction donnee
+        transaction_id = self.request.query_params.get("transaction")
+        if transaction_id:
+            qs = qs.filter(transaction_id=transaction_id)
+
         return qs.order_by("-is_prioritaire", "-created_at")
 
     def get_permissions(self):
@@ -1026,7 +1031,7 @@ def resoudre_enquete_signalement(request, pk):
             if montant_raw is not None:
                 try:
                     montant_corrige = int(montant_raw)
-                    Transaction.objects.create(
+                    correction = Transaction.objects.create(
                         commune=tx.commune,
                         type=tx.type,
                         statut="CORRIGEE",
@@ -1042,6 +1047,23 @@ def resoudre_enquete_signalement(request, pk):
                         periode=tx.periode,
                         projet=tx.projet,
                     )
+                    # Ancrage blockchain de la transaction corrective (preuve publique du verdict DGDDL)
+                    if blockchain.is_configured():
+                        try:
+                            correction_hash = blockchain.valider_depense(
+                                depense_id=str(correction.id),
+                                commune_id=str(correction.commune_id),
+                                montant=correction.montant_fcfa,
+                                categorie=str(correction.categorie),
+                                ipfs_hash=correction.ipfs_hash or "",
+                            )
+                            correction.blockchain_tx_hash_validation = correction_hash
+                            correction.blockchain_synced_at = timezone.now()
+                            correction.save(update_fields=[
+                                "blockchain_tx_hash_validation", "blockchain_synced_at"
+                            ])
+                        except Exception as e:
+                            print(f"Erreur ancrage blockchain correction: {str(e)}")
                 except (ValueError, TypeError):
                     pass
 
@@ -1120,6 +1142,86 @@ def resoudre_enquete_signalement(request, pk):
         if delta != 0:
             maire.reputation_score = max(0, (maire.reputation_score or 0) + delta)
             maire.save(update_fields=["reputation_score"])
+
+    # ─── 3bis) ACTEURS DIRECTS DE LA TRANSACTION FRAUDULEUSE ─────────────
+    # Si le signalement est lie a une transaction blockchain, alors les acteurs
+    # directement responsables doivent etre tenus comptables :
+    #   - soumis_par : l'agent ou maire qui a saisi la transaction
+    #   - valide_par : celui qui a valide la transaction sur blockchain
+    #   - bailleur du projet associe (notifie sans sanction)
+    if signalement.transaction:
+        tx = signalement.transaction
+        # Set des deja notifies pour eviter double notif (ex: si soumis_par == valide_par)
+        deja_traites = set()
+        if maire:
+            deja_traites.add(maire.id)
+
+        def _appliquer_acteur_tx(acteur, role_label: str):
+            """Applique une sanction/recompense + notif a un acteur direct de la TX."""
+            if not acteur or acteur.id in deja_traites:
+                return
+            deja_traites.add(acteur.id)
+
+            if resolution == "FRAUDE":
+                delta_acteur = -15
+                titre_acteur = f"Fraude confirmee sur une transaction que vous avez {role_label}"
+                message_acteur = (
+                    f"{delta_acteur} points. Le DGDDL a confirme une fraude sur la transaction "
+                    f"#{str(tx.id)[:8]} ({tx.montant_fcfa:,} FCFA). Une transaction corrective a ete "
+                    f"emise et ancree sur la blockchain."
+                )
+            elif resolution == "FAUX":
+                delta_acteur = 10
+                titre_acteur = f"Transaction blanchie : vous etes innocente"
+                message_acteur = (
+                    f"+{delta_acteur} points. Le signalement contre la transaction "
+                    f"que vous avez {role_label} a ete juge abusif. Votre integrite est confirmee."
+                )
+            else:  # INFONDE
+                delta_acteur = 0
+                titre_acteur = "Signalement contre une transaction que vous avez traitee classe"
+                message_acteur = (
+                    f"Le DGDDL a classe sans suite un signalement contre la transaction "
+                    f"#{str(tx.id)[:8]} que vous avez {role_label}. Aucune sanction."
+                )
+
+            if delta_acteur != 0:
+                acteur.reputation_score = max(0, (acteur.reputation_score or 0) + delta_acteur)
+                acteur.save(update_fields=["reputation_score"])
+            notify_user(acteur, titre_acteur, message_acteur, "SIGNALEMENT")
+
+        # Agent qui a soumis la transaction
+        _appliquer_acteur_tx(tx.soumis_par, "soumise")
+        # Validateur de la transaction (peut differer du maire actuel si rotation)
+        _appliquer_acteur_tx(tx.valide_par, "validee")
+
+        # Bailleur du projet (notification informative, pas de sanction)
+        if tx.projet and tx.projet.bailleur and tx.projet.bailleur.id not in deja_traites:
+            deja_traites.add(tx.projet.bailleur.id)
+            if resolution == "FRAUDE":
+                notify_user(
+                    tx.projet.bailleur,
+                    "Fraude detectee sur un projet que vous financez",
+                    f"Le projet '{tx.projet.nom}' (commune: {signalement.commune.nom}) a fait "
+                    f"l'objet d'une fraude confirmee (transaction #{str(tx.id)[:8]} - "
+                    f"{tx.montant_fcfa:,} FCFA). Une correction a ete emise par le DGDDL.",
+                    "SIGNALEMENT",
+                )
+            elif resolution == "FAUX":
+                notify_user(
+                    tx.projet.bailleur,
+                    "Alerte close : projet finance reste integre",
+                    f"Un signalement contre une transaction du projet '{tx.projet.nom}' a ete "
+                    f"juge abusif. Aucune action requise.",
+                    "SIGNALEMENT",
+                )
+            else:  # INFONDE
+                notify_user(
+                    tx.projet.bailleur,
+                    "Signalement classe sur un projet que vous financez",
+                    f"Le signalement contre le projet '{tx.projet.nom}' a ete classe sans suite par le DGDDL.",
+                    "SIGNALEMENT",
+                )
 
     # ─── 4) REPUTATION + NOTIFICATION : VOTANTS CITOYENS ────────────────
     # Recompense ceux qui ont vote juste, penalise ceux qui ont vote a tort.

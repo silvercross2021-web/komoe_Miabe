@@ -9,6 +9,8 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useTransactionDetail } from "@/lib/hooks/useTransactions";
 import { formatFCFA, formatDateShort, polygonscanTxUrl, ipfsFileUrl, stripHtml } from "@/lib/utils";
+import { LinkedSignalementsPanel } from "@/components/transactions/LinkedSignalementsPanel";
+import { DgddlTransactionBadge } from "@/components/transactions/DgddlTransactionBadge";
 
 /**
  * Page de détail d'une transaction pour le grand public.
@@ -82,8 +84,8 @@ export default function PublicTransactionDetailPage() {
         </div>
         <div className="flex gap-3">
           {tx.blockchain_tx_hash_validation && (
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               asChild
               className="gap-2 text-brand-orange border-brand-orange/20 hover:bg-brand-orange hover:text-white rounded-2xl h-12 px-6 font-black uppercase text-[10px]"
             >
@@ -94,6 +96,12 @@ export default function PublicTransactionDetailPage() {
           )}
         </div>
       </div>
+
+      {/* Badge premium si TX corrective DGDDL (verdict de fraude) */}
+      <DgddlTransactionBadge transaction={tx} />
+
+      {/* Signalements lies a cette transaction (visible publiquement uniquement s'il y en a) */}
+      <LinkedSignalementsPanel transactionId={tx.id} hideIfEmpty />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <Card className="col-span-1 lg:col-span-2 shadow-2xl border-border rounded-[32px] overflow-hidden">

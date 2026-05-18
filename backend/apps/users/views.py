@@ -471,11 +471,18 @@ def list_pending_certifications(request):
     
     user = request.user
     
-    # Base query: users with CNI submitted AND status is PENDING
-    queryset = User.objects.filter(
-        certification_status="PENDING",
+    # Support filtering by status via query param (?status=PENDING|APPROVED|REJECTED|ALL)
+    status_param = request.query_params.get("status", "ALL")
+    valid_statuses = ["PENDING", "APPROVED", "REJECTED"]
+
+    base_qs = User.objects.filter(
         cni_numero__isnull=False
     ).exclude(cni_numero="")
+
+    if status_param in valid_statuses:
+        queryset = base_qs.filter(certification_status=status_param)
+    else:
+        queryset = base_qs
 
     # Filtering logic
     if user.role == Role.DGDDL:

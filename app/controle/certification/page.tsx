@@ -6,6 +6,9 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { ShieldCheck, CheckCircle2, XCircle, Loader2, Search, Eye, FileText, Calendar } from "lucide-react";
 import { authApi, type ApiError } from "@/lib/api";
+import { pushToast } from "@/lib/toast";
+import { emitDataChange } from "@/lib/dataEvents";
+import { useDataChange } from "@/lib/hooks/useDataChange";
 
 interface CertificationRequest {
   id: string;
@@ -42,18 +45,16 @@ export default function CertificationPage() {
 
   useEffect(() => {
     fetchCertifications();
-  }, [statusFilter]);
+  }, []);
+
+  // Auto-refresh quand une certification change ailleurs ou au focus de la fenetre
+  useDataChange("certification", () => fetchCertifications());
 
   const fetchCertifications = async () => {
     setLoading(true);
     try {
       const data = await authApi.listPendingCertifications();
-      setRequests(
-        (data.pending_certifications || []).filter(
-          (r: any) =>
-            statusFilter === "ALL" || r.certification_status === statusFilter
-        )
-      );
+      setRequests(data.pending_certifications || []);
     } catch (err) {
       console.error("Erreur fetch certifications:", err);
       setRequests([]);
@@ -63,28 +64,42 @@ export default function CertificationPage() {
   };
 
   const handleReview = async (action: "approve" | "reject") => {
-    if (!selectedRequest) return;
+    if (!selectedRequest || isReviewing) return;
 
     setIsReviewing(true);
     try {
       await authApi.reviewCertification(selectedRequest.id, action);
-      fetchCertifications();
+      await fetchCertifications();
       setSelectedRequest(null);
       setReviewAction(null);
+      pushToast({
+        title: action === "approve" ? "Citoyen approuvé" : "Demande rejetée",
+        description: action === "approve"
+          ? "Le citoyen est désormais certifié et a accès aux fonctionnalités avancées."
+          : "La demande de certification a été rejetée.",
+        variant: action === "approve" ? "success" : "warning",
+      });
+      // Invalide les caches engagements et tous les dashboards lies aux citoyens
+      emitDataChange("certification");
+      emitDataChange("engagement");
     } catch (err) {
       console.error("Erreur review:", err);
       const errorMsg = (err as ApiError).message || "Erreur lors de la validation";
-      alert(errorMsg);
+      pushToast({
+        title: "Échec de la validation",
+        description: errorMsg,
+        variant: "danger",
+      });
     } finally {
       setIsReviewing(false);
     }
   };
 
   const filtered = requests.filter((r) => {
+    const matchesStatus = statusFilter === "ALL" || r.certification_status === statusFilter;
     const fullName = `${r.prenom} ${r.nom}`.toLowerCase();
-    return (
-      fullName.includes(search.toLowerCase()) || r.email.toLowerCase().includes(search.toLowerCase()) || r.cni_numero.includes(search)
-    );
+    const matchesSearch = fullName.includes(search.toLowerCase()) || r.email.toLowerCase().includes(search.toLowerCase()) || r.cni_numero.includes(search);
+    return matchesStatus && matchesSearch;
   });
 
   const pending = requests.filter((r) => r.certification_status === "PENDING").length;

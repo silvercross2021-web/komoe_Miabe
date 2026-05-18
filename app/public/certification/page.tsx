@@ -16,7 +16,7 @@ import { authApi, type ApiError } from "@/lib/api";
 type Step = "intro" | "identity" | "document" | "success";
 
 export default function CertificationPage() {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const router = useRouter();
   const [step, setStep] = useState<Step>("intro");
   const [form, setForm] = useState({ cni_numero: "", cni_date: "", document: null as File | null });
@@ -31,6 +31,7 @@ export default function CertificationPage() {
 
     try {
       await authApi.submitCertification(form.cni_numero, form.cni_date, form.document || undefined as any);
+      await refreshUser();
       setStep("success");
       // Redirection automatique après 3 secondes
       setTimeout(() => {

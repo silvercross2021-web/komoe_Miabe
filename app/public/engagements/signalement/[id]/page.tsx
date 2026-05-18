@@ -412,6 +412,17 @@ export default function SignalementDetailPage() {
                               ↳ Verdict scellé : {signalement.blockchain_tx_hash_resolution.slice(0, 12)}…
                             </a>
                           )}
+                          {(signalement.resolution_par_detail?.full_name || signalement.enquete_lancee_par_detail?.full_name) && (
+                            <p className="text-[9px] text-white/70 italic pt-2 leading-snug">
+                              Signé par le système KOMOE pour le compte du DGDDL{" "}
+                              <span className="font-bold text-white/90">
+                                {signalement.resolution_par_detail?.full_name || signalement.enquete_lancee_par_detail?.full_name}
+                              </span>
+                              {(signalement.resolution_par_detail?.wallet_address || signalement.enquete_lancee_par_detail?.wallet_address) && (
+                                <> (wallet : <span className="font-mono">{(signalement.resolution_par_detail?.wallet_address || signalement.enquete_lancee_par_detail?.wallet_address || "").slice(0, 10)}…</span>)</>
+                              )}
+                            </p>
+                          )}
                         </div>
                       )}
                     </div>

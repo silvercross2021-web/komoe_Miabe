@@ -9,7 +9,7 @@ import { transactionsApi, projetsApi, type ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { useRouter } from "next/navigation";
 import { ipfsService } from "@/lib/ipfs";
-import { useWriteContract, useAccount } from "wagmi";
+import { useWriteContract, useAccount, usePublicClient } from "wagmi";
 import { BUDGET_LEDGER_ABI, BUDGET_LEDGER_ADDRESS } from "@/lib/blockchain";
 
 interface DepenseFormProps {
@@ -27,6 +27,7 @@ export const DepenseForm = ({ initialData, initialType, onSuccess, onCancel }: D
   const [quoteItems, setQuoteItems] = useState<QuoteItemData[]>([]);
   const { address, isConnected } = useAccount();
   const { writeContractAsync } = useWriteContract();
+  const publicClient = usePublicClient();
   
   const [files, setFiles] = useState<File[]>([]);
   const [projets, setProjets] = useState<any[]>([]);
@@ -122,37 +123,73 @@ export const DepenseForm = ({ initialData, initialType, onSuccess, onCancel }: D
         });
       }
 
-      // 3. Signature Blockchain avec l'ID Django réel
+      // 3. Simulation préalable pour détecter les reverts AVANT de soumettre
+      const contractFn = (form.type === "RECETTE" ? "soumettreRecette" : "soumettreDepense") as "soumettreRecette" | "soumettreDepense";
+      const communeIdStr = String(created.commune);
+      const montantBig = BigInt(Math.round(created.montant_fcfa));
+      const ipfsArg = realIpfsHash || "no-hash";
+
+      if (publicClient && address) {
+        try {
+          await publicClient.simulateContract({
+            address: BUDGET_LEDGER_ADDRESS as `0x${string}`,
+            abi: BUDGET_LEDGER_ABI,
+            functionName: contractFn,
+            args: [created.id, communeIdStr, montantBig, created.categorie, ipfsArg],
+            account: address,
+          });
+        } catch (simErr: any) {
+          const reason: string = simErr?.message || simErr?.shortMessage || "";
+          if (reason.includes("AGENT_ROLE") || reason.includes("missing role") || reason.includes("AccessControl")) {
+            throw new Error(
+              "Votre wallet n'a pas le rôle Agent sur la blockchain. Demandez à l'administrateur KOMOE d'appeler attribuerRoleAgent avec votre adresse et communeId « " + String(created.commune) + " »."
+            );
+          } else if (reason.includes("autorise pour cette commune") || reason.includes("communeId")) {
+            throw new Error(
+              `Commune mismatch : votre wallet est enregistré pour une autre commune. CommuneId envoyé : « ${String(created.commune)} ». Contactez l'admin KOMOE.`
+            );
+          } else if (reason.includes("pause") || reason.includes("Pausable")) {
+            throw new Error("Le contrat KOMOE est temporairement suspendu. Contactez l'administrateur.");
+          } else if (reason.includes("montant")) {
+            throw new Error("Le montant doit être supérieur à 0.");
+          } else {
+            throw new Error("Simulation blockchain échouée : " + (simErr?.shortMessage || reason || "Erreur inconnue"));
+          }
+        }
+      }
+
+      // 4. Signature Blockchain avec l'ID Django réel
       try {
         const txHash = await writeContractAsync({
-          address: BUDGET_LEDGER_ADDRESS,
+          address: BUDGET_LEDGER_ADDRESS as `0x${string}`,
           abi: BUDGET_LEDGER_ABI,
-          functionName: form.type === "RECETTE" ? "soumettreRecette" : "soumettreDepense",
-          args: [
-            created.id,
-            String(created.commune),
-            BigInt(created.montant_fcfa),
-            created.categorie,
-            realIpfsHash || "no-hash",
-          ],
+          functionName: contractFn,
+          args: [created.id, communeIdStr, montantBig, created.categorie, ipfsArg],
           gas: 300000n,
           maxPriorityFeePerGas: parseGwei('25'),
           maxFeePerGas: parseGwei('30'),
         });
 
-        // 4. Patch du hash blockchain
+        // 5. Attendre la confirmation on-chain pour détecter les reverts réels
+        if (publicClient) {
+          const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash as `0x${string}` });
+          if (receipt.status === "reverted") {
+            throw new Error("La transaction a été rejetée par le contrat (revert). Vérifiez les autorisations blockchain.");
+          }
+        }
+
+        // 6. Patch du hash blockchain seulement si la tx est confirmée
         await transactionsApi.confirmerHash(created.id, txHash);
-        alert("Succès ! La dépense est signée et envoyée au Maire. 🚀");
+        alert(form.type === "RECETTE" ? "Succès ! La recette est signée et envoyée au Maire. 🚀" : "Succès ! La dépense est signée et envoyée au Maire. 🚀");
         onSuccess ? onSuccess() : router.push("/commune/saisies");
 
       } catch (err: any) {
         console.warn("⚠️ Signature annulée ou échouée:", err);
-        // Si c'est une annulation MetaMask, on informe que c'est quand même en brouillon
         if (err.message?.includes("User rejected") || err.name === "UserRejectedRequestError") {
-          alert("Signature annulée. La dépense est bien enregistrée en BROUILLON. Vous pourrez la signer plus tard.");
+          alert("Signature annulée. La transaction est bien enregistrée en BROUILLON. Vous pourrez la signer plus tard.");
           onSuccess ? onSuccess() : router.push("/commune/saisies");
         } else {
-          setApiError("Erreur Blockchain : " + (err.message || "Action annulée"));
+          throw err;
         }
       }
     } catch (err: any) {
@@ -182,12 +219,14 @@ export const DepenseForm = ({ initialData, initialType, onSuccess, onCancel }: D
               </FormField>
 
               <FormField label="Projet Associé (Optionnel)">
-                <Select 
-                  value={form.projet} 
+                <Select
+                  value={form.projet}
                   onChange={(e: any) => setForm(f => ({ ...f, projet: e.target.value }))}
                   disabled={loadingProjets}
                 >
-                  <option value="" className="bg-background text-foreground italic">Dépense hors projet spécifique</option>
+                  <option value="" className="bg-background text-foreground italic">
+                    {form.type === "RECETTE" ? "Recette hors projet spécifique" : "Dépense hors projet spécifique"}
+                  </option>
                   {projets.map(p => (
                     <option key={p.id} value={p.id} className="bg-background text-foreground">
                       {p.nom} ({p.statut})
@@ -241,10 +280,10 @@ export const DepenseForm = ({ initialData, initialType, onSuccess, onCancel }: D
               Détails & Justificatifs
             </h3>
             
-            <FormField label="Description de la dépense" required>
-              <RichTextEditor 
-                name="description" 
-                placeholder="Décrivez précisément l'objet de cette dépense, les bénéficiaires et l'impact attendu..." 
+            <FormField label={form.type === "RECETTE" ? "Description de la recette" : "Description de la dépense"} required>
+              <RichTextEditor
+                name="description"
+                placeholder={form.type === "RECETTE" ? "Décrivez la source et la nature de cette recette, le redevable et les modalités de recouvrement..." : "Décrivez précisément l'objet de cette dépense, les bénéficiaires et l'impact attendu..."}
                 defaultValue={form.description}
                 onChange={(val: string) => setForm(f => ({ ...f, description: val }))} 
               />

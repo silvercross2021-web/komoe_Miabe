@@ -16,6 +16,8 @@ import {
 } from "lucide-react";
 import { signalementsApi, type Signalement } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { pushToast } from "@/lib/toast";
+import { emitDataChange } from "@/lib/dataEvents";
 
 const STATUT_META: Record<string, { label: string; icon: any; bg: string; text: string; border: string; gradient: string; }> = {
   NOUVEAU:       { label: "Nouveau",            icon: AlertTriangle, bg: "bg-blue-500/10",    text: "text-blue-600",    border: "border-blue-500/30",    gradient: "from-blue-500/20 to-blue-500/5" },
@@ -66,13 +68,25 @@ export default function ControleSignalementDetailPage() {
   }, [id]);
 
   const handleLancerEnquete = async () => {
+    // Protection double-clic
+    if (actionLoading) return;
     if (!confirm("Confirmer le lancement d'une enquête formelle sur ce signalement ?")) return;
     setActionLoading(true);
     try {
       await signalementsApi.lancerEnquete(id);
-      fetchSignalement();
+      await fetchSignalement();
+      pushToast({
+        title: "Enquête lancée",
+        description: "Le dossier d'audit est ouvert et tracé sur la blockchain.",
+        variant: "success",
+      });
+      emitDataChange("signalement");
     } catch (err: any) {
-      alert("Erreur : " + (err.message || "Échec"));
+      pushToast({
+        title: "Impossible de lancer l'enquête",
+        description: err?.message || "Erreur inconnue. Réessayez dans un instant.",
+        variant: "danger",
+      });
     } finally {
       setActionLoading(false);
     }
@@ -80,20 +94,42 @@ export default function ControleSignalementDetailPage() {
 
   const handleResoudreEnquete = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!justification.trim()) { alert("La justification est obligatoire."); return; }
+    // Protection double-clic
+    if (actionLoading) return;
+    if (!justification.trim()) {
+      pushToast({
+        title: "Justification obligatoire",
+        description: "Vous devez justifier le verdict avant publication.",
+        variant: "warning",
+      });
+      return;
+    }
     setActionLoading(true);
     try {
-      await signalementsApi.resoudreEnquete(id, { 
-        resolution, 
-        justification, 
-        montant_corrige: resolution === "FRAUDE" && montantCorrige ? Number(montantCorrige) : undefined 
+      await signalementsApi.resoudreEnquete(id, {
+        resolution,
+        justification,
+        montant_corrige: resolution === "FRAUDE" && montantCorrige ? Number(montantCorrige) : undefined,
       });
       setShowResoudreForm(false);
       setJustification("");
       setMontantCorrige("");
-      fetchSignalement();
+      await fetchSignalement();
+      pushToast({
+        title: "Verdict publié",
+        description: `Le verdict ${resolution} a été scellé sur la blockchain et notifié à tous les acteurs.`,
+        variant: "success",
+        duration: 7000,
+      });
+      emitDataChange("signalement");
+      // Si la TX a été corrigée (cas FRAUDE), invalider aussi les caches transaction
+      if (resolution === "FRAUDE") emitDataChange("transaction");
     } catch (err: any) {
-      alert("Erreur : " + (err.message || "Échec"));
+      pushToast({
+        title: "Échec de la publication du verdict",
+        description: err?.message || "Le verdict n'a pas pu être enregistré. Le signalement est peut-être déjà clôturé.",
+        variant: "danger",
+      });
     } finally {
       setActionLoading(false);
     }
@@ -101,15 +137,26 @@ export default function ControleSignalementDetailPage() {
 
   const handleAddNote = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (actionLoading) return;
     if (!noteEnquete.trim()) return;
     setActionLoading(true);
     try {
       await signalementsApi.ajouterNoteEnquete(id, noteEnquete);
       setNoteEnquete("");
       setShowNoteForm(false);
-      fetchSignalement();
+      await fetchSignalement();
+      pushToast({
+        title: "Note d'audit ajoutée",
+        description: "Votre observation est visible publiquement dans la timeline.",
+        variant: "info",
+      });
+      emitDataChange("signalement");
     } catch (err: any) {
-      alert("Erreur : " + (err.message || "Échec"));
+      pushToast({
+        title: "Impossible d'enregistrer la note",
+        description: err?.message || "Erreur inconnue.",
+        variant: "danger",
+      });
     } finally {
       setActionLoading(false);
     }
@@ -146,7 +193,11 @@ export default function ControleSignalementDetailPage() {
       setSignalement(fresh);
     } catch (err: any) {
       setSignalement(oldSignalement);
-      alert("Erreur vote : " + (err.message || "Échec"));
+      pushToast({
+        title: "Vote non enregistré",
+        description: err?.message || "Réessayez dans un instant.",
+        variant: "danger",
+      });
     } finally {
       setVotingId(null);
     }
@@ -330,15 +381,26 @@ export default function ControleSignalementDetailPage() {
                     <p className="text-sm text-foreground/90 leading-relaxed">{signalement.resolution_justification}</p>
                   )}
                   {signalement.blockchain_tx_hash_resolution && (
-                    <a
-                      href={`https://amoy.polygonscan.com/tx/${signalement.blockchain_tx_hash_resolution}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 mt-3 text-[10px] font-black text-primary hover:underline"
-                    >
-                      <LinkIcon className="w-3 h-3" />
-                      Preuve blockchain du verdict
-                    </a>
+                    <>
+                      <a
+                        href={`https://amoy.polygonscan.com/tx/${signalement.blockchain_tx_hash_resolution}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 mt-3 text-[10px] font-black text-primary hover:underline"
+                      >
+                        <LinkIcon className="w-3 h-3" />
+                        Preuve blockchain du verdict
+                      </a>
+                      {signalement.resolution_par_detail?.full_name && (
+                        <p className="text-[9px] text-muted-foreground/70 italic mt-1 leading-snug">
+                          Signe par le systeme KOMOE pour le compte du DGDDL{" "}
+                          <span className="font-bold text-foreground/80">{signalement.resolution_par_detail.full_name}</span>
+                          {signalement.resolution_par_detail.wallet_address && (
+                            <> (wallet : <span className="font-mono">{signalement.resolution_par_detail.wallet_address.slice(0, 10)}…</span>)</>
+                          )}
+                        </p>
+                      )}
+                    </>
                   )}
                 </div>
               )}

@@ -271,14 +271,25 @@ export default function SignalementDetailPage() {
               )}
 
               {signalement.blockchain_tx_hash_resolution && (
-                <a
-                  href={`https://amoy.polygonscan.com/tx/${signalement.blockchain_tx_hash_resolution}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 mt-4 text-[10px] font-black text-primary hover:underline"
-                >
-                  Verifier le verdict sur la blockchain
-                </a>
+                <>
+                  <a
+                    href={`https://amoy.polygonscan.com/tx/${signalement.blockchain_tx_hash_resolution}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 mt-4 text-[10px] font-black text-primary hover:underline"
+                  >
+                    Verifier le verdict sur la blockchain
+                  </a>
+                  {signalement.resolution_par_detail?.full_name && (
+                    <p className="text-[9px] text-muted-foreground/70 italic mt-1 leading-snug">
+                      Signe par le systeme KOMOE pour le compte du DGDDL{" "}
+                      <span className="font-bold text-foreground/80">{signalement.resolution_par_detail.full_name}</span>
+                      {signalement.resolution_par_detail.wallet_address && (
+                        <> (wallet : <span className="font-mono">{signalement.resolution_par_detail.wallet_address.slice(0, 10)}…</span>)</>
+                      )}
+                    </p>
+                  )}
+                </>
               )}
             </div>
           )}

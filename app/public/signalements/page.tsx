@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { signalementsApi, type Signalement } from "@/lib/api";
+import { signalementsApi, transactionsApi, type Signalement, type Transaction } from "@/lib/api";
 import { useCommunesList } from "@/lib/hooks/useCommunes";
 import { useAuth } from "@/lib/auth-context";
 import { Card, CardContent } from "@/components/ui/Card";
@@ -46,6 +46,28 @@ export default function SignalementsConsolidatedPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [formSuccess, setFormSuccess] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // Transactions disponibles de la commune choisie (pour rattacher le signalement)
+  const [communeTransactions, setCommuneTransactions] = useState<Transaction[]>([]);
+  const [loadingTransactions, setLoadingTransactions] = useState(false);
+
+  // Recharge la liste des transactions quand la commune change dans le formulaire
+  useEffect(() => {
+    if (!form.communeId) {
+      setCommuneTransactions([]);
+      setForm((f) => ({ ...f, transactionId: "" }));
+      return;
+    }
+    setLoadingTransactions(true);
+    transactionsApi
+      .list({ commune: Number(form.communeId), limit: 100 })
+      .then((res) => setCommuneTransactions(res.results ?? []))
+      .catch(() => setCommuneTransactions([]))
+      .finally(() => setLoadingTransactions(false));
+    // Si on change de commune, on reset la transaction choisie
+    setForm((f) => ({ ...f, transactionId: "" }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.communeId]);
 
   // Fetch signalements
   useEffect(() => {
@@ -336,6 +358,44 @@ export default function SignalementsConsolidatedPage() {
                       <option key={cat} value={cat}>{cat}</option>
                     ))}
                   </select>
+                </div>
+
+                {/* Transaction concernee (optionnel) - active uniquement si commune choisie */}
+                <div>
+                  <label className="block text-xs font-black uppercase text-muted-foreground tracking-widest mb-2">
+                    Transaction concernée <span className="text-muted-foreground/60 normal-case font-bold">(optionnel)</span>
+                  </label>
+                  <select
+                    value={form.transactionId}
+                    onChange={e => setForm({...form, transactionId: e.target.value})}
+                    disabled={!form.communeId || loadingTransactions}
+                    className="w-full px-4 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {!form.communeId ? (
+                      <option value="">Choisissez d'abord une commune</option>
+                    ) : loadingTransactions ? (
+                      <option value="">Chargement des transactions…</option>
+                    ) : (
+                      <>
+                        <option value="">Aucune transaction spécifique</option>
+                        {communeTransactions.map((tx) => (
+                          <option key={tx.id} value={tx.id}>
+                            {tx.type === "DEPENSE" ? "📤" : "📥"} {tx.montant_fcfa.toLocaleString()} FCFA — {tx.categorie} — {tx.statut} ({(tx.periode ?? "").slice(0, 7)})
+                          </option>
+                        ))}
+                      </>
+                    )}
+                  </select>
+                  {form.communeId && !loadingTransactions && communeTransactions.length === 0 && (
+                    <p className="text-[10px] text-muted-foreground mt-1.5">
+                      Aucune transaction trouvée pour cette commune.
+                    </p>
+                  )}
+                  {form.transactionId && (
+                    <p className="text-[10px] text-emerald-600 font-bold mt-1.5">
+                      ✓ Signalement rattaché à cette transaction. Le verdict DGDDL aura un impact direct sur la transaction et ses responsables.
+                    </p>
+                  )}
                 </div>
 
                 <div>

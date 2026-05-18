@@ -3,17 +3,34 @@
 import { useEffect, useState } from "react";
 import { projetsApi, type Projet } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
-import { Loader2, Search, Building2, Plus, Edit2, BarChart3, TrendingUp, CheckCircle2 } from "lucide-react";
+import { Loader2, Search, Building2, Plus, Edit2, BarChart3, TrendingUp, CheckCircle2, X } from "lucide-react";
 import { ProjetCard } from "@/components/projets/ProjetCard";
 import { Button } from "@/components/ui/Button";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
+
+const STATUT_OPTIONS = [
+  { value: "EN_ATTENTE", label: "En attente" },
+  { value: "EN_COURS", label: "En cours" },
+  { value: "ACHEVE", label: "Achevé" },
+  { value: "ANNULE", label: "Annulé" },
+];
 
 export default function CommuneProjetsPage() {
   const { user } = useAuth();
   const [projets, setProjets] = useState<Projet[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [newProjet, setNewProjet] = useState({
+    nom: "",
+    description: "",
+    budget_alloue_fcfa: "",
+    statut: "EN_ATTENTE",
+  });
 
   const fetchProjets = async () => {
     setLoading(true);
@@ -35,6 +52,29 @@ export default function CommuneProjetsPage() {
       fetchProjets();
     }
   }, [user?.commune]);
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user?.commune) return;
+    setCreating(true);
+    setCreateError(null);
+    try {
+      await projetsApi.create({
+        commune: user.commune as any,
+        nom: newProjet.nom,
+        description: newProjet.description,
+        budget_alloue_fcfa: Number(newProjet.budget_alloue_fcfa),
+        statut: newProjet.statut as any,
+      });
+      setIsModalOpen(false);
+      setNewProjet({ nom: "", description: "", budget_alloue_fcfa: "", statut: "EN_ATTENTE" });
+      fetchProjets();
+    } catch (err: any) {
+      setCreateError(err?.message || "Erreur lors de la création du projet.");
+    } finally {
+      setCreating(false);
+    }
+  };
 
   const filtered = projets.filter(p => 
     p.nom.toLowerCase().includes(search.toLowerCase())
@@ -76,7 +116,10 @@ export default function CommuneProjetsPage() {
               />
            </div>
            {user?.role === "MAIRE" && (
-             <Button className="h-12 px-6 rounded-2xl font-black uppercase text-xs tracking-widest shadow-lg shadow-primary/20 italic">
+             <Button
+               onClick={() => setIsModalOpen(true)}
+               className="h-12 px-6 rounded-2xl font-black uppercase text-xs tracking-widest shadow-lg shadow-primary/20 italic"
+             >
                 <Plus className="w-4 h-4 mr-2" /> Nouveau Projet
              </Button>
            )}
@@ -135,6 +178,121 @@ export default function CommuneProjetsPage() {
           ))}
         </div>
       )}
+
+      {/* Modal création de projet */}
+      <AnimatePresence>
+        {isModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+            onClick={(e) => { if (e.target === e.currentTarget) setIsModalOpen(false); }}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-card border border-border rounded-[32px] shadow-2xl w-full max-w-lg overflow-hidden"
+            >
+              <div className="flex items-center justify-between p-8 border-b border-border">
+                <div>
+                  <h3 className="text-xl font-black uppercase italic tracking-tight">Nouveau Projet</h3>
+                  <p className="text-xs text-muted-foreground font-medium mt-1">Créez un projet municipal pour votre commune</p>
+                </div>
+                <button
+                  onClick={() => setIsModalOpen(false)}
+                  className="p-2 rounded-full hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <form onSubmit={handleCreate} className="p-8 space-y-5">
+                <div>
+                  <label className="block text-xs font-black uppercase tracking-widest text-muted-foreground mb-2">Nom du projet *</label>
+                  <input
+                    required
+                    type="text"
+                    placeholder="Ex: Rénovation du marché central"
+                    value={newProjet.nom}
+                    onChange={(e) => setNewProjet(p => ({ ...p, nom: e.target.value }))}
+                    className="w-full px-4 py-3 bg-background border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary transition-all"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-black uppercase tracking-widest text-muted-foreground mb-2">Description</label>
+                  <textarea
+                    rows={3}
+                    placeholder="Décrivez les objectifs et bénéficiaires du projet..."
+                    value={newProjet.description}
+                    onChange={(e) => setNewProjet(p => ({ ...p, description: e.target.value }))}
+                    className="w-full px-4 py-3 bg-background border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary transition-all resize-none"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-black uppercase tracking-widest text-muted-foreground mb-2">Budget alloué (FCFA) *</label>
+                    <input
+                      required
+                      type="number"
+                      min="0"
+                      placeholder="Ex: 50000000"
+                      value={newProjet.budget_alloue_fcfa}
+                      onChange={(e) => setNewProjet(p => ({ ...p, budget_alloue_fcfa: e.target.value }))}
+                      className="w-full px-4 py-3 bg-background border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-black uppercase tracking-widest text-muted-foreground mb-2">Statut initial</label>
+                    <select
+                      value={newProjet.statut}
+                      onChange={(e) => setNewProjet(p => ({ ...p, statut: e.target.value }))}
+                      className="w-full px-4 py-3 bg-background border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary transition-all"
+                    >
+                      {STATUT_OPTIONS.map(s => (
+                        <option key={s.value} value={s.value}>{s.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {createError && (
+                  <p className="text-xs font-bold text-red-500 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">{createError}</p>
+                )}
+
+                <div className="flex gap-3 pt-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setIsModalOpen(false)}
+                    className="flex-1 h-12 rounded-2xl font-bold"
+                  >
+                    Annuler
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={creating}
+                    className="flex-[2] h-12 rounded-2xl font-black shadow-lg shadow-primary/20"
+                  >
+                    {creating ? (
+                      <span className="flex items-center gap-2">
+                        <Loader2 className="w-4 h-4 animate-spin" /> Création...
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-2">
+                        <Plus className="w-4 h-4" /> Créer le projet
+                      </span>
+                    )}
+                  </Button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
