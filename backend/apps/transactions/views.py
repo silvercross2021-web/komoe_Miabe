@@ -297,7 +297,7 @@ def valider_transaction(request, pk):
     try:
         if transaction.projet and transaction.type == "DEPENSE":
             from django.db.models import Sum
-            from .models import TransactionStatut, TransactionType
+            from .models import TransactionType
             total_projet = Transaction.objects.filter(
                 projet=transaction.projet,
                 statut__in=[TransactionStatut.VALIDE, TransactionStatut.CORRIGEE],
