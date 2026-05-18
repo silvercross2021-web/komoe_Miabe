@@ -265,12 +265,27 @@ def valider_transaction(request, pk):
 
     if tx_hash:
         transaction.blockchain_tx_hash_validation = tx_hash
-        transaction.blockchain_synced_at = timezone.now()
 
     transaction.statut = TransactionStatut.VALIDE
     transaction.valide_par = request.user
     transaction.validated_at = timezone.now()
-    transaction.save()
+
+    # Save with explicit update_fields to avoid crashing if blockchain_synced_at
+    # column is missing on Render (migration 0014 may not have been applied yet).
+    save_fields = ["statut", "valide_par", "validated_at", "updated_at"]
+    if tx_hash:
+        save_fields.append("blockchain_tx_hash_validation")
+    try:
+        transaction.save(update_fields=save_fields)
+    except Exception as save_err:
+        return Response({"error": f"Erreur de sauvegarde: {str(save_err)}"}, status=500)
+
+    # Update blockchain_synced_at via QuerySet (safe even if column is missing)
+    if tx_hash:
+        try:
+            Transaction.objects.filter(pk=transaction.pk).update(blockchain_synced_at=timezone.now())
+        except Exception:
+            pass
 
     try:
         if transaction.projet and transaction.type == "DEPENSE":

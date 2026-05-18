@@ -341,7 +341,7 @@ const MaireDashboard = ({ communeId }: { communeId: number }) => {
       refetch();
     } catch (err: any) {
       console.error("❌ Erreur de validation:", err);
-      alert("Échec de la signature : " + (err.shortMessage || "Erreur de transaction"));
+      alert("Échec de la signature : " + (err.shortMessage || err.message || "Erreur de transaction"));
     } finally {
       setSigningId(null);
     }
