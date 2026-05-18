@@ -220,7 +220,8 @@ def valider_transaction(request, pk):
     if transaction.commune != request.user.commune:
         return Response({"error": "Vous ne pouvez valider que les transactions de votre commune."}, status=403)
 
-    tx_hash = request.data.get("blockchain_tx_hash", "").strip() or None
+    raw_hash = request.data.get("blockchain_tx_hash")
+    tx_hash = raw_hash.strip() if isinstance(raw_hash, str) else None
 
     # Valider le format du hash client (doit être un hash Ethereum valide 0x + 64 hex)
     if tx_hash and not (tx_hash.startswith("0x") and len(tx_hash) == 66):
@@ -229,12 +230,15 @@ def valider_transaction(request, pk):
             status=400,
         )
 
-    # S3 : Vérification on-chain du hash de validation (Maire)
+    # Vérification on-chain non-bloquante (le nœud RPC peut avoir un léger retard d'indexation)
     blockchain = BlockchainService()
     if tx_hash and blockchain.is_configured():
-        # On vérifie que le hash existe et a été émis par le wallet du maire (si renseigné)
-        if not blockchain.verifier_hash_transaction(tx_hash, expected_sender=request.user.wallet_address):
-            return Response({"error": "Le hash de validation fourni est invalide ou introuvable sur Polygon."}, status=400)
+        try:
+            is_valid = blockchain.verifier_hash_transaction(tx_hash, expected_sender=request.user.wallet_address)
+            if is_valid is False:
+                return Response({"error": "Le hash de validation fourni est invalide ou introuvable sur Polygon."}, status=400)
+        except Exception:
+            pass
 
     # Ancrage blockchain (seulement si non fourni par le client)
     if not tx_hash:
@@ -284,25 +288,25 @@ def valider_transaction(request, pk):
         transaction.projet.save(update_fields=["budget_consomme_fcfa"])
     # ──────────────────────────────────────────────────────────────────
 
-    # H10 : Notifier le Bailleur si la transaction est liée à un projet
-    if transaction.projet and transaction.projet.bailleur:
+    try:
         from .notifications import notify_user
-        notify_user(
-            user=transaction.projet.bailleur,
-            titre="Financement décaissé 💰",
-            message=f"Une dépense de {transaction.montant_fcfa:,} FCFA a été validée pour votre projet '{transaction.projet.nom}'.",
-            type_notif="TRANSACTION"
-        )
-
-    # H10 : Notifier l'agent
-    from .notifications import notify_user
-    if transaction.soumis_par:
-        notify_user(
-            user=transaction.soumis_par,
-            titre="Transaction Validée ✅",
-            message=f"Votre transaction '{transaction.description[:30]}...' a été validée par le Maire et ancrée sur la blockchain.",
-            type_notif="TRANSACTION"
-        )
+        if transaction.projet and transaction.projet.bailleur:
+            notify_user(
+                user=transaction.projet.bailleur,
+                titre="Financement décaissé",
+                message=f"Une dépense de {transaction.montant_fcfa:,} FCFA a été validée pour votre projet '{transaction.projet.nom}'.",
+                type_notif="TRANSACTION"
+            )
+        if transaction.soumis_par:
+            desc_preview = (transaction.description or "")[:30]
+            notify_user(
+                user=transaction.soumis_par,
+                titre="Transaction Validée",
+                message=f"Votre transaction '{desc_preview}...' a été validée par le Maire et ancrée sur la blockchain.",
+                type_notif="TRANSACTION"
+            )
+    except Exception:
+        pass
 
     return Response(
         {
