@@ -11,7 +11,7 @@ import { formatFCFA, formatDateShort, polygonscanTxUrl, truncateHash, stripHtml 
 import { useAuth } from "@/lib/auth-context";
 import { transactionsApi } from "@/lib/api";
 import { useState } from "react";
-import { useReadContract, useWriteContract, useAccount } from "wagmi";
+import { useReadContract, useWriteContract, useAccount, usePublicClient } from "wagmi";
 import { BUDGET_LEDGER_ABI, BUDGET_LEDGER_ADDRESS } from "@/lib/blockchain";
 import { LinkedSignalementsPanel } from "@/components/transactions/LinkedSignalementsPanel";
 import { DgddlTransactionBadge } from "@/components/transactions/DgddlTransactionBadge";
@@ -45,6 +45,7 @@ export default function TransactionDetailPage() {
   const [isJsonModalOpen, setIsJsonModalOpen] = useState(false);
   const { isConnected } = useAccount();
   const { writeContractAsync } = useWriteContract();
+  const publicClient = usePublicClient();
 
   // Lecture des données on-chain (Simulé via les données du backend certifiées)
   const isLoadingOnChain = false;
@@ -64,10 +65,10 @@ export default function TransactionDetailPage() {
         abi: BUDGET_LEDGER_ABI,
         functionName: tx.type === "RECETTE" ? "enregistrerRecette" : "validerDepense",
         args: [
-          tx.id, 
-          String(tx.commune), 
-          BigInt(tx.montant_fcfa), 
-          tx.categorie, 
+          tx.id,
+          String(tx.commune),
+          BigInt(tx.montant_fcfa),
+          tx.categorie,
           tx.ipfs_hash || "no-hash"
         ],
         gas: 300000n,
@@ -75,7 +76,12 @@ export default function TransactionDetailPage() {
         maxFeePerGas: BigInt(30000000000),
       });
 
-      // 2. Notification au backend avec le hash du Maire
+      // Attendre la confirmation on-chain avant d'informer le backend
+      if (publicClient) {
+        const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash as `0x${string}` });
+        if (receipt.status === "reverted") throw new Error("La transaction a été rejetée par le contrat blockchain.");
+      }
+
       await transactionsApi.valider(id, txHash);
       alert("Transaction validée avec succès sur Polygon !");
       await refetch();
@@ -121,6 +127,12 @@ export default function TransactionDetailPage() {
         maxPriorityFeePerGas: BigInt(25000000000),
         maxFeePerGas: BigInt(30000000000),
       });
+
+      // Attendre la confirmation on-chain avant d'informer le backend
+      if (publicClient) {
+        const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash as `0x${string}` });
+        if (receipt.status === "reverted") throw new Error("La transaction a été rejetée par le contrat blockchain.");
+      }
 
       await transactionsApi.confirmerHash(id, txHash);
       alert("Transaction signée et soumise au Maire !");
